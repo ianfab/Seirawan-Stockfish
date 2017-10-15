@@ -37,7 +37,7 @@
 using std::string;
 
 namespace PSQT {
-  extern Score psq[PIECE_NB][SQUARE_NB];
+  extern Score psq[PIECE_NB][SQUARE_NB + 1];
 }
 
 namespace Zobrist {
@@ -50,10 +50,10 @@ namespace Zobrist {
 
 namespace {
 
-const string PieceToChar(" PNBRQK  pnbrqk");
+const string PieceToChar(" PNBRQKHE pnbrqkhe");
 
-const Piece Pieces[] = { W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
-                         B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING };
+const Piece Pieces[] = { W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING, W_HAWK, W_ELEPHANT,
+                         B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING, B_HAWK, B_ELEPHANT };
 
 // min_attacker() is a helper function used by see_ge() to locate the least
 // valuable attacker for the side to move, remove the attacker we just found
@@ -221,6 +221,16 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
           put_piece(Piece(idx), sq);
           ++sq;
       }
+      else if (token == '[')
+          break;
+  }
+
+  while ((ss >> token) && !isspace(token))
+  {
+      if (token == ']')
+          continue;
+      else if ((idx = PieceToChar.find(token)) != string::npos)
+          add_to_hand(color_of(Piece(idx)), type_of(Piece(idx)));
   }
 
   // 2. Active color
@@ -242,13 +252,25 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
       token = char(toupper(token));
 
       if (token == 'K')
+      {
           for (rsq = relative_square(c, SQ_H1); piece_on(rsq) != rook; --rsq) {}
+          st->gatesBB |= rsq;
+          st->gatesBB |= square<KING>(c);
+      }
 
       else if (token == 'Q')
+      {
           for (rsq = relative_square(c, SQ_A1); piece_on(rsq) != rook; ++rsq) {}
+          st->gatesBB |= rsq;
+          st->gatesBB |= square<KING>(c);
+      }
 
       else if (token >= 'A' && token <= 'H')
+      {
           rsq = make_square(File(token - 'A'), relative_rank(c, RANK_1));
+          st->gatesBB |= rsq;
+          continue;
+      }
 
       else
           continue;
@@ -322,12 +344,14 @@ void Position::set_check_info(StateInfo* si) const {
 
   Square ksq = square<KING>(~sideToMove);
 
-  si->checkSquares[PAWN]   = attacks_from<PAWN>(ksq, ~sideToMove);
-  si->checkSquares[KNIGHT] = attacks_from<KNIGHT>(ksq);
-  si->checkSquares[BISHOP] = attacks_from<BISHOP>(ksq);
-  si->checkSquares[ROOK]   = attacks_from<ROOK>(ksq);
-  si->checkSquares[QUEEN]  = si->checkSquares[BISHOP] | si->checkSquares[ROOK];
-  si->checkSquares[KING]   = 0;
+  si->checkSquares[PAWN]      = attacks_from<PAWN>(ksq, ~sideToMove);
+  si->checkSquares[KNIGHT]    = attacks_from<KNIGHT>(ksq);
+  si->checkSquares[BISHOP]    = attacks_from<BISHOP>(ksq);
+  si->checkSquares[ROOK]      = attacks_from<ROOK>(ksq);
+  si->checkSquares[QUEEN]     = si->checkSquares[BISHOP] | si->checkSquares[ROOK];
+  si->checkSquares[KING]      = 0;
+  si->checkSquares[HAWK]      = si->checkSquares[KNIGHT] | si->checkSquares[BISHOP];
+  si->checkSquares[ELEPHANT]  = si->checkSquares[KNIGHT] | si->checkSquares[ROOK];
 }
 
 
@@ -353,6 +377,8 @@ void Position::set_state(StateInfo* si) const {
       si->key ^= Zobrist::psq[pc][s];
       si->psq += PSQT::psq[pc][s];
   }
+  si->psq += PSQT::psq[W_HAWK][SQUARE_NB] * si->inHand[WHITE][0] + PSQT::psq[W_ELEPHANT][SQUARE_NB] * si->inHand[WHITE][1];
+  si->psq += PSQT::psq[B_HAWK][SQUARE_NB] * si->inHand[BLACK][0] + PSQT::psq[B_ELEPHANT][SQUARE_NB] * si->inHand[BLACK][1];
 
   if (si->epSquare != SQ_NONE)
       si->key ^= Zobrist::enpassant[file_of(si->epSquare)];
@@ -426,21 +452,41 @@ const string Position::fen() const {
           ss << '/';
   }
 
+  ss << '[';
+  for (Color c = WHITE; c <= BLACK; ++c)
+      for (PieceType pt = HAWK; pt <= ELEPHANT; ++pt)
+          ss << std::string(st->inHand[c][pt == ELEPHANT], PieceToChar[make_piece(c, pt)]);
+  ss << ']';
+
   ss << (sideToMove == WHITE ? " w " : " b ");
 
   if (can_castle(WHITE_OO))
-      ss << (chess960 ? char('A' + file_of(castling_rook_square(WHITE |  KING_SIDE))) : 'K');
+      ss << 'K';
 
   if (can_castle(WHITE_OOO))
-      ss << (chess960 ? char('A' + file_of(castling_rook_square(WHITE | QUEEN_SIDE))) : 'Q');
+      ss << 'Q';
+
+  for (File f = FILE_A; f <= FILE_H; ++f)
+      if (   (gates(WHITE) & make_square(f, RANK_1))
+          && (!can_castle(WHITE_OO)  || f != file_of(castling_rook_square(WHITE_OO)))
+          && (!can_castle(WHITE_OOO) || f != file_of(castling_rook_square(WHITE_OOO)))
+          && (!can_castle(WHITE)     || f != file_of(square<KING>(WHITE))))
+          ss << char('A' + f);
 
   if (can_castle(BLACK_OO))
-      ss << (chess960 ? char('a' + file_of(castling_rook_square(BLACK |  KING_SIDE))) : 'k');
+      ss << 'k';
 
   if (can_castle(BLACK_OOO))
-      ss << (chess960 ? char('a' + file_of(castling_rook_square(BLACK | QUEEN_SIDE))) : 'q');
+      ss << 'q';
 
-  if (!can_castle(WHITE) && !can_castle(BLACK))
+  for (File f = FILE_A; f <= FILE_H; ++f)
+      if (   (gates(BLACK) & make_square(f, RANK_8))
+          && (!can_castle(BLACK_OO)  || f != file_of(castling_rook_square(BLACK_OO)))
+          && (!can_castle(BLACK_OOO) || f != file_of(castling_rook_square(BLACK_OOO)))
+          && (!can_castle(BLACK)     || f != file_of(square<KING>(BLACK))))
+          ss << char('a' + f);
+
+  if (!can_castle(WHITE) && !can_castle(BLACK) && !gates(WHITE) && !gates(BLACK))
       ss << '-';
 
   ss << (ep_square() == SQ_NONE ? " - " : " " + UCI::square(ep_square()) + " ")
@@ -463,8 +509,8 @@ Bitboard Position::slider_blockers(Bitboard sliders, Square s, Bitboard& pinners
   pinners = 0;
 
   // Snipers are sliders that attack 's' when a piece is removed
-  Bitboard snipers = (  (PseudoAttacks[  ROOK][s] & pieces(QUEEN, ROOK))
-                      | (PseudoAttacks[BISHOP][s] & pieces(QUEEN, BISHOP))) & sliders;
+  Bitboard snipers = (  (PseudoAttacks[  ROOK][s] & pieces(QUEEN, ROOK, ELEPHANT))
+                      | (PseudoAttacks[BISHOP][s] & pieces(QUEEN, BISHOP, HAWK))) & sliders;
 
   while (snipers)
   {
@@ -489,9 +535,9 @@ Bitboard Position::attackers_to(Square s, Bitboard occupied) const {
 
   return  (attacks_from<PAWN>(s, BLACK)    & pieces(WHITE, PAWN))
         | (attacks_from<PAWN>(s, WHITE)    & pieces(BLACK, PAWN))
-        | (attacks_from<KNIGHT>(s)         & pieces(KNIGHT))
-        | (attacks_bb<  ROOK>(s, occupied) & pieces(  ROOK, QUEEN))
-        | (attacks_bb<BISHOP>(s, occupied) & pieces(BISHOP, QUEEN))
+        | (attacks_from<KNIGHT>(s)         & pieces(KNIGHT,  HAWK, ELEPHANT))
+        | (attacks_bb<  ROOK>(s, occupied) & pieces(  ROOK, QUEEN, ELEPHANT))
+        | (attacks_bb<BISHOP>(s, occupied) & pieces(BISHOP, QUEEN, HAWK))
         | (attacks_from<KING>(s)           & pieces(KING));
 }
 
@@ -523,8 +569,8 @@ bool Position::legal(Move m) const {
       assert(piece_on(capsq) == make_piece(~us, PAWN));
       assert(piece_on(to) == NO_PIECE);
 
-      return   !(attacks_bb<  ROOK>(ksq, occupied) & pieces(~us, QUEEN, ROOK))
-            && !(attacks_bb<BISHOP>(ksq, occupied) & pieces(~us, QUEEN, BISHOP));
+      return   !(attacks_bb<  ROOK>(ksq, occupied) & pieces(~us, QUEEN, ROOK, ELEPHANT))
+            && !(attacks_bb<BISHOP>(ksq, occupied) & pieces(~us, QUEEN, BISHOP, HAWK));
   }
 
   // If the moving piece is a king, check whether the destination
@@ -631,6 +677,12 @@ bool Position::gives_check(Move m) const {
       && !aligned(from, to, square<KING>(~sideToMove)))
       return true;
 
+  // Is there a check by gated pieces?
+  if (    is_gating(m)
+      && (st->checkSquares[gating_type(m)] & (gating_on_castling_rook(m) ? to_sq(m) : from_sq(m)))
+      && !aligned(from, to, square<KING>(~sideToMove)))
+      return true;
+
   switch (type_of(m))
   {
   case NORMAL:
@@ -648,8 +700,8 @@ bool Position::gives_check(Move m) const {
       Square capsq = make_square(file_of(to), rank_of(from));
       Bitboard b = (pieces() ^ from ^ capsq) | to;
 
-      return  (attacks_bb<  ROOK>(square<KING>(~sideToMove), b) & pieces(sideToMove, QUEEN, ROOK))
-            | (attacks_bb<BISHOP>(square<KING>(~sideToMove), b) & pieces(sideToMove, QUEEN, BISHOP));
+      return  (attacks_bb<  ROOK>(square<KING>(~sideToMove), b) & pieces(sideToMove, QUEEN, ROOK, ELEPHANT))
+            | (attacks_bb<BISHOP>(square<KING>(~sideToMove), b) & pieces(sideToMove, QUEEN, BISHOP, HAWK));
   }
   case CASTLING:
   {
@@ -796,7 +848,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           Piece promotion = make_piece(us, promotion_type(m));
 
           assert(relative_rank(us, to) == RANK_8);
-          assert(type_of(promotion) >= KNIGHT && type_of(promotion) <= QUEEN);
+          assert(type_of(promotion) >= KNIGHT && type_of(promotion) <= ELEPHANT);
 
           remove_piece(pc, to);
           put_piece(promotion, to);
@@ -831,6 +883,29 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   // Update the key with the final value
   st->key = k;
 
+  // Add gating piece
+  if (is_gating(m))
+  {
+      assert(gating_type(m) == HAWK || gating_type(m) == ELEPHANT);
+
+      Square gating_square = gating_on_castling_rook(m) ? to_sq(m) : from_sq(m);
+      Piece gating_piece = make_piece(sideToMove, gating_type(m));
+      put_piece(gating_piece, gating_square);
+      remove_from_hand(sideToMove, gating_type(m));
+      st->gatesBB = st->gatesBB & ~SquareBB[gating_square];
+      st->psq +=  PSQT::psq[gating_piece][gating_square]
+                - PSQT::psq[gating_piece][SQUARE_NB];
+      k ^= Zobrist::psq[gating_piece][gating_square];
+      st->materialKey ^= Zobrist::psq[gating_piece][pieceCount[gating_piece]];
+      st->nonPawnMaterial[us] += PieceValue[MG][gating_piece];
+  }
+
+  // Remove gate
+  if (gates(us) & from)
+      st->gatesBB ^= from;
+  if (type_of(m) == CASTLING || (gates(them) & to))
+      st->gatesBB ^= to;
+
   // Calculate checkers bitboard (if move gives check)
   st->checkersBB = givesCheck ? attackers_to(square<KING>(them)) & pieces(us) : 0;
 
@@ -857,14 +932,26 @@ void Position::undo_move(Move m) {
   Square to = to_sq(m);
   Piece pc = piece_on(to);
 
-  assert(empty(from) || type_of(m) == CASTLING);
+  assert(empty(from) || type_of(m) == CASTLING || is_gating(m));
   assert(type_of(st->capturedPiece) != KING);
+
+  // Remove gated piece
+  if (is_gating(m))
+  {
+      Square gating_square = gating_on_castling_rook(m) ? to_sq(m) : from_sq(m);
+      Piece gating_piece = make_piece(sideToMove, gating_type(m));
+      remove_piece(gating_piece, gating_square);
+      add_to_hand(sideToMove, gating_type(m));
+      st->gatesBB = st->gatesBB | gating_square;
+      st->psq -=  PSQT::psq[gating_piece][gating_square]
+                - PSQT::psq[gating_piece][SQUARE_NB];
+  }
 
   if (type_of(m) == PROMOTION)
   {
       assert(relative_rank(us, to) == RANK_8);
       assert(type_of(pc) == promotion_type(m));
-      assert(type_of(pc) >= KNIGHT && type_of(pc) <= QUEEN);
+      assert(type_of(pc) >= KNIGHT && type_of(pc) <= ELEPHANT);
 
       remove_piece(pc, to);
       pc = make_piece(us, PAWN);
