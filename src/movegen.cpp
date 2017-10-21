@@ -88,10 +88,13 @@ namespace {
         *moveList++ = make<PROMOTION >(to - D, to, KNIGHT);
     }
 
-    // Knight promotion is the only promotion that can give a direct check
+    // Elephant/Hawk/Knight promotions are the only promotions that can give a direct check
     // that's not already included in the queen promotion.
     if (Type == QUIET_CHECKS && (PseudoAttacks[KNIGHT][to] & ksq))
-        *moveList++ = make<PROMOTION>(to - D, to, KNIGHT);
+    {
+        *moveList++ = make<PROMOTION2>(to - D, to, ELEPHANT);
+        *moveList++ = make<PROMOTION2>(to - D, to, HAWK);
+    }
     else
         (void)ksq; // Silence a warning under MSVC
 
