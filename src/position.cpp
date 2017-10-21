@@ -65,15 +65,15 @@ PieceType min_attacker(const Bitboard* bb, Square to, Bitboard stmAttackers,
 
   Bitboard b = stmAttackers & bb[Pt];
   if (!b)
-      return min_attacker<Pt + 1>(bb, to, stmAttackers, occupied, attackers);
+      return min_attacker<Pt == ELEPHANT ? QUEEN : (Pt == ROOK ? HAWK : Pt + 1)>(bb, to, stmAttackers, occupied, attackers);
 
   occupied ^= b & ~(b - 1);
 
-  if (Pt == PAWN || Pt == BISHOP || Pt == QUEEN)
-      attackers |= attacks_bb<BISHOP>(to, occupied) & (bb[BISHOP] | bb[QUEEN]);
+  if (Pt == PAWN || Pt == BISHOP || Pt == QUEEN || Pt == HAWK)
+      attackers |= attacks_bb<BISHOP>(to, occupied) & (bb[BISHOP] | bb[QUEEN] | bb[HAWK]);
 
-  if (Pt == ROOK || Pt == QUEEN)
-      attackers |= attacks_bb<ROOK>(to, occupied) & (bb[ROOK] | bb[QUEEN]);
+  if (Pt == ROOK || Pt == QUEEN || Pt == ELEPHANT)
+      attackers |= attacks_bb<ROOK>(to, occupied) & (bb[ROOK] | bb[QUEEN] | bb[ELEPHANT]);
 
   attackers &= occupied; // After X-ray that may add already processed pieces
   return (PieceType)Pt;
