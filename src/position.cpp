@@ -42,7 +42,7 @@ namespace PSQT {
 
 namespace Zobrist {
 
-  Key psq[PIECE_NB][SQUARE_NB];
+  Key psq[PIECE_NB][SQUARE_NB + 1];
   Key enpassant[FILE_NB];
   Key castling[CASTLING_RIGHT_NB];
   Key side, noPawns;
@@ -133,7 +133,7 @@ void Position::init() {
   PRNG rng(1070372);
 
   for (Piece pc : Pieces)
-      for (Square s = SQ_A1; s <= SQ_H8; ++s)
+      for (Square s = SQ_A1; s <= SQUARE_NB; ++s)
           Zobrist::psq[pc][s] = rng.rand<Key>();
 
   for (File f = FILE_A; f <= FILE_H; ++f)
@@ -379,6 +379,8 @@ void Position::set_state(StateInfo* si) const {
   }
   si->psq += PSQT::psq[W_HAWK][SQUARE_NB] * si->inHand[WHITE][0] + PSQT::psq[W_ELEPHANT][SQUARE_NB] * si->inHand[WHITE][1];
   si->psq += PSQT::psq[B_HAWK][SQUARE_NB] * si->inHand[BLACK][0] + PSQT::psq[B_ELEPHANT][SQUARE_NB] * si->inHand[BLACK][1];
+  si->key ^= Zobrist::psq[W_HAWK][SQUARE_NB] * si->inHand[WHITE][0] ^ Zobrist::psq[W_ELEPHANT][SQUARE_NB] * si->inHand[WHITE][1];
+  si->key ^= Zobrist::psq[B_HAWK][SQUARE_NB] * si->inHand[WHITE][0] ^ Zobrist::psq[B_ELEPHANT][SQUARE_NB] * si->inHand[WHITE][1];
 
   if (si->epSquare != SQ_NONE)
       si->key ^= Zobrist::enpassant[file_of(si->epSquare)];
@@ -895,7 +897,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       st->gatesBB = st->gatesBB & ~SquareBB[gating_square];
       st->psq +=  PSQT::psq[gating_piece][gating_square]
                 - PSQT::psq[gating_piece][SQUARE_NB];
-      k ^= Zobrist::psq[gating_piece][gating_square];
+      k ^= Zobrist::psq[gating_piece][gating_square] ^ Zobrist::psq[gating_piece][SQUARE_NB];
       st->materialKey ^= Zobrist::psq[gating_piece][pieceCount[gating_piece]];
       st->nonPawnMaterial[us] += PieceValue[MG][gating_piece];
   }
@@ -943,8 +945,6 @@ void Position::undo_move(Move m) {
       remove_piece(gating_piece, gating_square);
       add_to_hand(sideToMove, gating_type(m));
       st->gatesBB = st->gatesBB | gating_square;
-      st->psq -=  PSQT::psq[gating_piece][gating_square]
-                - PSQT::psq[gating_piece][SQUARE_NB];
   }
 
   if (type_of(m) == PROMOTION)
