@@ -882,9 +882,6 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   // Set capture piece
   st->capturedPiece = captured;
 
-  // Update the key with the final value
-  st->key = k;
-
   // Add gating piece
   if (is_gating(m))
   {
@@ -907,6 +904,9 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       st->gatesBB ^= from;
   if (type_of(m) == CASTLING || (gates(them) & to))
       st->gatesBB ^= to;
+
+  // Update the key with the final value
+  st->key = k;
 
   // Calculate checkers bitboard (if move gives check)
   st->checkersBB = givesCheck ? attackers_to(square<KING>(them)) & pieces(us) : 0;
