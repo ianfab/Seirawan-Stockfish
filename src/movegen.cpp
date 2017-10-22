@@ -419,7 +419,17 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
   // Generate evasions for king, capture and non capture moves
   Bitboard b = pos.attacks_from<KING>(ksq) & ~pos.pieces(us) & ~sliderAttacks;
   while (b)
-      *moveList++ = make_move(ksq, pop_lsb(&b));
+  {
+      Square s = pop_lsb(&b);
+      *moveList++ = make_move(ksq, s);
+      if (pos.gates(us) & ksq)
+      {
+          if (pos.has_hawk(us))
+              *moveList++ = make<NORMAL>(ksq, s, HAWK);
+          if (pos.has_elephant(us))
+              *moveList++ = make<NORMAL>(ksq, s, ELEPHANT);
+      }
+  }
 
   if (more_than_one(pos.checkers()))
       return moveList; // Double check, only a king move can save the day
