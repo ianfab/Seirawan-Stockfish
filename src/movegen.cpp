@@ -250,7 +250,7 @@ namespace {
     {
         if (Checks)
         {
-            if (    (Pt == BISHOP || Pt == ROOK || Pt == QUEEN)
+            if (    (Pt != PAWN && Pt != KNIGHT && Pt != KING)
                 && !(PseudoAttacks[Pt][from] & target & pos.check_squares(Pt)))
                 continue;
 
