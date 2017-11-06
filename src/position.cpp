@@ -222,15 +222,17 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
           ++sq;
       }
       else if (token == '[')
+      {
+          // Pieces in hand
+          while ((ss >> token) && !isspace(token))
+          {
+              if (token == ']')
+                  continue;
+              else if ((idx = PieceToChar.find(token)) != string::npos)
+                  add_to_hand(color_of(Piece(idx)), type_of(Piece(idx)));
+          }
           break;
-  }
-
-  while ((ss >> token) && !isspace(token))
-  {
-      if (token == ']')
-          continue;
-      else if ((idx = PieceToChar.find(token)) != string::npos)
-          add_to_hand(color_of(Piece(idx)), type_of(Piece(idx)));
+      }
   }
 
   // 2. Active color
