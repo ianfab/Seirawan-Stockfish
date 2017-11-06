@@ -439,7 +439,7 @@ inline int from_to(Move m) {
 }
 
 inline bool is_gating(Move m) {
-  return (m & (3 << 12)) && ((m & (3 << 14)) == NORMAL || (m & (3 << 14)) == CASTLING || rank_of(from_sq(m)) == rank_of(to_sq(m)));
+  return (m & (3 << 12)) && (rank_of(from_sq(m)) == RANK_1 || rank_of(from_sq(m)) == RANK_8) && ((m & (3 << 14)) == NORMAL || (m & (3 << 14)) == CASTLING || rank_of(from_sq(m)) == rank_of(to_sq(m)));
 }
 
 inline bool gating_on_castling_rook(Move m) {
