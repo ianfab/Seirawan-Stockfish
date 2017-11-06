@@ -1122,8 +1122,10 @@ bool Position::see_ge(Move m, Value threshold) const {
       // Locate and remove the next least valuable attacker
       nextVictim = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
 
+      if (nextVictim == KING && stm == sideToMove && is_gating(m) && (gating_type(m) == HAWK ? attacks_bb<HAWK>(from, occupied) : attacks_bb<ELEPHANT>(from, occupied)))
+          nextVictim = gating_type(m);
       if (nextVictim == KING)
-          return relativeStm == bool(attackers & pieces(~stm));
+          return relativeStm == (bool(attackers & pieces(~stm)) || (~stm == sideToMove && is_gating(m) && (gating_type(m) == HAWK ? attacks_bb<HAWK>(from, occupied) : attacks_bb<ELEPHANT>(from, occupied))));
 
       balance += relativeStm ?  PieceValue[MG][nextVictim]
                              : -PieceValue[MG][nextVictim];
