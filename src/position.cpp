@@ -62,12 +62,12 @@ const Piece Pieces[] = { W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING, W_
 // from the bitboards and scan for new X-ray attacks behind it.
 
 template<int Pt>
-PieceType min_attacker(const Bitboard* bb, Square to, Bitboard stmAttackers,
+PieceType min_attacker(const Bitboard* bb, const Bitboard* gated_bb, Square to, Bitboard stmAttackers,
                        Bitboard& occupied, Bitboard& attackers) {
 
-  Bitboard b = stmAttackers & bb[Pt];
+  Bitboard b = stmAttackers & (Pt > KING ? (bb[Pt] | gated_bb[Pt]) : bb[Pt]);
   if (!b)
-      return min_attacker<Pt == ELEPHANT ? QUEEN : (Pt == ROOK ? HAWK : Pt + 1)>(bb, to, stmAttackers, occupied, attackers);
+      return min_attacker<Pt == ELEPHANT ? QUEEN : (Pt == ROOK ? HAWK : Pt + 1)>(bb, gated_bb, to, stmAttackers, occupied, attackers);
 
   occupied ^= b & ~(b - 1);
 
@@ -82,7 +82,7 @@ PieceType min_attacker(const Bitboard* bb, Square to, Bitboard stmAttackers,
 }
 
 template<>
-PieceType min_attacker<KING>(const Bitboard*, Square, Bitboard, Bitboard&, Bitboard&) {
+PieceType min_attacker<KING>(const Bitboard*, const Bitboard*, Square, Bitboard, Bitboard&, Bitboard&) {
   return KING; // No need to update bitboards: it is the last cycle
 }
 
@@ -1113,6 +1113,14 @@ bool Position::see_ge(Move m, Value threshold) const {
   bool relativeStm = true; // True if the opponent is to move
   occupied = pieces() ^ from ^ to;
 
+  Bitboard gated_bb[PIECE_TYPE_NB];
+  gated_bb[HAWK] = gated_bb[ELEPHANT] = 0;
+  
+  if (gating_type(m) != KING) {
+      gated_bb[gating_type(m)] |= from;
+      occupied |= from;
+  }
+
   // Find all attackers to the destination square, with the moving piece removed,
   // but possibly an X-ray attacker added behind it.
   Bitboard attackers = attackers_to(to, occupied) & occupied;
@@ -1130,12 +1138,10 @@ bool Position::see_ge(Move m, Value threshold) const {
           return relativeStm;
 
       // Locate and remove the next least valuable attacker
-      nextVictim = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
+      nextVictim = min_attacker<PAWN>(byTypeBB, gated_bb, to, stmAttackers, occupied, attackers);
 
-      if (nextVictim == KING && stm == sideToMove && is_gating(m) && (gating_type(m) == HAWK ? attacks_bb<HAWK>(from, occupied) : attacks_bb<ELEPHANT>(from, occupied)))
-          nextVictim = gating_type(m);
       if (nextVictim == KING)
-          return relativeStm == (bool(attackers & pieces(~stm)) || (~stm == sideToMove && is_gating(m) && (gating_type(m) == HAWK ? attacks_bb<HAWK>(from, occupied) : attacks_bb<ELEPHANT>(from, occupied))));
+          return relativeStm == bool(attackers & pieces(~stm));
 
       balance += relativeStm ?  PieceValue[MG][nextVictim]
                              : -PieceValue[MG][nextVictim];
