@@ -611,11 +611,17 @@ bool Position::pseudo_legal(const Move m) const {
   Piece pc = moved_piece(m);
 
   // Use a slower but simpler function for uncommon cases
-  if (type_of(m) != NORMAL || is_gating(m))
+  if (type_of(m) != NORMAL)
       return MoveList<LEGAL>(*this).contains(m);
+  
+  // Illegal gating type. This type of error could not happen if we move
+  // all gateable pieces next to each other in the PieceType enum.
+  if (gating_type(m) == KING + 3)
+      return false;
 
-  // Is not a promotion, so promotion piece must be empty
-  if (promotion_type(m) - KNIGHT != NO_PIECE_TYPE)
+  // If the move gates a piece make sure we have that piece in hand
+  // and that we are allowed to gate on the from square.
+  if (gating_type(m) != KING && !(in_hand(us, gating_type(m)) && (gates(us) & from)))
       return false;
 
   // If the 'from' square is not occupied by a piece belonging to the side to
