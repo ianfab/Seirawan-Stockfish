@@ -37,12 +37,14 @@
 using std::string;
 
 namespace PSQT {
-  extern Score psq[PIECE_NB][SQUARE_NB + 1];
+  extern Score psq[PIECE_NB][SQUARE_NB];
+  extern Score inhand[PIECE_NB];
 }
 
 namespace Zobrist {
 
-  Key psq[PIECE_NB][SQUARE_NB + 1];
+  Key psq[PIECE_NB][SQUARE_NB];
+  Key inhand[PIECE_NB];
   Key enpassant[FILE_NB];
   Key castling[CASTLING_RIGHT_NB];
   Key side, noPawns;
@@ -60,12 +62,12 @@ const Piece Pieces[] = { W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING, W_
 // from the bitboards and scan for new X-ray attacks behind it.
 
 template<int Pt>
-PieceType min_attacker(const Bitboard* bb, Square to, Bitboard stmAttackers,
+PieceType min_attacker(const Bitboard* bb, const Bitboard* gated_bb, Square to, Bitboard stmAttackers,
                        Bitboard& occupied, Bitboard& attackers) {
 
-  Bitboard b = stmAttackers & bb[Pt];
+  Bitboard b = stmAttackers & (Pt > KING ? (bb[Pt] | gated_bb[Pt]) : bb[Pt]);
   if (!b)
-      return min_attacker<Pt == ELEPHANT ? QUEEN : (Pt == ROOK ? HAWK : Pt + 1)>(bb, to, stmAttackers, occupied, attackers);
+      return min_attacker<Pt == ELEPHANT ? QUEEN : (Pt == ROOK ? HAWK : Pt + 1)>(bb, gated_bb, to, stmAttackers, occupied, attackers);
 
   occupied ^= b & ~(b - 1);
 
@@ -80,7 +82,7 @@ PieceType min_attacker(const Bitboard* bb, Square to, Bitboard stmAttackers,
 }
 
 template<>
-PieceType min_attacker<KING>(const Bitboard*, Square, Bitboard, Bitboard&, Bitboard&) {
+PieceType min_attacker<KING>(const Bitboard*, const Bitboard*, Square, Bitboard, Bitboard&, Bitboard&) {
   return KING; // No need to update bitboards: it is the last cycle
 }
 
@@ -133,8 +135,11 @@ void Position::init() {
   PRNG rng(1070372);
 
   for (Piece pc : Pieces)
-      for (Square s = SQ_A1; s <= SQUARE_NB; ++s)
+  {
+      for (Square s = SQ_A1; s < SQUARE_NB; ++s)
           Zobrist::psq[pc][s] = rng.rand<Key>();
+      Zobrist::inhand[pc] = rng.rand<Key>();
+  }
 
   for (File f = FILE_A; f <= FILE_H; ++f)
       Zobrist::enpassant[f] = rng.rand<Key>();
@@ -379,10 +384,14 @@ void Position::set_state(StateInfo* si) const {
       si->key ^= Zobrist::psq[pc][s];
       si->psq += PSQT::psq[pc][s];
   }
-  si->psq += PSQT::psq[W_HAWK][SQUARE_NB] * si->inHand[WHITE][0] + PSQT::psq[W_ELEPHANT][SQUARE_NB] * si->inHand[WHITE][1];
-  si->psq += PSQT::psq[B_HAWK][SQUARE_NB] * si->inHand[BLACK][0] + PSQT::psq[B_ELEPHANT][SQUARE_NB] * si->inHand[BLACK][1];
-  si->key ^= Zobrist::psq[W_HAWK][SQUARE_NB] * si->inHand[WHITE][0] ^ Zobrist::psq[W_ELEPHANT][SQUARE_NB] * si->inHand[WHITE][1];
-  si->key ^= Zobrist::psq[B_HAWK][SQUARE_NB] * si->inHand[WHITE][0] ^ Zobrist::psq[B_ELEPHANT][SQUARE_NB] * si->inHand[WHITE][1];
+
+  for (Color c = WHITE; c <= BLACK; ++c)
+      for (PieceType pt : {HAWK, ELEPHANT})
+          if (in_hand(c, pt))
+          {
+              si->psq += PSQT::inhand[make_piece(c, pt)];
+              si->key ^= Zobrist::inhand[make_piece(c, pt)];
+          }
 
   if (si->epSquare != SQ_NONE)
       si->key ^= Zobrist::enpassant[file_of(si->epSquare)];
@@ -459,7 +468,7 @@ const string Position::fen() const {
   ss << '[';
   for (Color c = WHITE; c <= BLACK; ++c)
       for (PieceType pt = HAWK; pt <= ELEPHANT; ++pt)
-          ss << std::string(st->inHand[c][pt == ELEPHANT], PieceToChar[make_piece(c, pt)]);
+          ss << std::string(in_hand(c, pt), PieceToChar[make_piece(c, pt)]);
   ss << ']';
 
   ss << (sideToMove == WHITE ? " w " : " b ");
@@ -602,11 +611,12 @@ bool Position::pseudo_legal(const Move m) const {
   Piece pc = moved_piece(m);
 
   // Use a slower but simpler function for uncommon cases
-  if (type_of(m) != NORMAL || is_gating(m))
+  if (type_of(m) != NORMAL)
       return MoveList<LEGAL>(*this).contains(m);
-
-  // Is not a promotion, so promotion piece must be empty
-  if (promotion_type(m) - KNIGHT != NO_PIECE_TYPE)
+  
+  // If the move gates a piece make sure we have that piece in hand
+  // and that we are allowed to gate on the from square.
+  if (gating_type(m) != KING && !(in_hand(us, gating_type(m)) && (gates(us) & from)))
       return false;
 
   // If the 'from' square is not occupied by a piece belonging to the side to
@@ -894,10 +904,9 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       put_piece(gating_piece, gating_square);
       remove_from_hand(sideToMove, gating_type(m));
       st->gatesBB = st->gatesBB & ~SquareBB[gating_square];
-      st->psq +=  PSQT::psq[gating_piece][gating_square]
-                - PSQT::psq[gating_piece][SQUARE_NB];
-      k ^= Zobrist::psq[gating_piece][gating_square] ^ Zobrist::psq[gating_piece][SQUARE_NB];
-      st->materialKey ^= Zobrist::psq[gating_piece][pieceCount[gating_piece]];
+      st->psq += PSQT::psq[gating_piece][gating_square] - PSQT::inhand[gating_piece];
+      k ^= Zobrist::psq[gating_piece][gating_square] ^ Zobrist::inhand[gating_piece];
+      st->materialKey ^= Zobrist::psq[gating_piece][pieceCount[gating_piece]-1];
       st->nonPawnMaterial[us] += PieceValue[MG][gating_piece];
   }
 
@@ -946,7 +955,6 @@ void Position::undo_move(Move m) {
       Piece gating_piece = make_piece(sideToMove, gating_type(m));
       remove_piece(gating_piece, gating_square);
       add_to_hand(sideToMove, gating_type(m));
-      st->gatesBB = st->gatesBB | gating_square;
   }
 
   if (type_of(m) == PROMOTION)
@@ -1105,6 +1113,14 @@ bool Position::see_ge(Move m, Value threshold) const {
   bool relativeStm = true; // True if the opponent is to move
   occupied = pieces() ^ from ^ to;
 
+  Bitboard gated_bb[PIECE_TYPE_NB];
+  gated_bb[HAWK] = gated_bb[ELEPHANT] = 0;
+  
+  if (gating_type(m) != KING) {
+      gated_bb[gating_type(m)] |= from;
+      occupied |= from;
+  }
+
   // Find all attackers to the destination square, with the moving piece removed,
   // but possibly an X-ray attacker added behind it.
   Bitboard attackers = attackers_to(to, occupied) & occupied;
@@ -1122,12 +1138,10 @@ bool Position::see_ge(Move m, Value threshold) const {
           return relativeStm;
 
       // Locate and remove the next least valuable attacker
-      nextVictim = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
+      nextVictim = min_attacker<PAWN>(byTypeBB, gated_bb, to, stmAttackers, occupied, attackers);
 
-      if (nextVictim == KING && stm == sideToMove && is_gating(m) && (gating_type(m) == HAWK ? attacks_bb<HAWK>(from, occupied) : attacks_bb<ELEPHANT>(from, occupied)))
-          nextVictim = gating_type(m);
       if (nextVictim == KING)
-          return relativeStm == (bool(attackers & pieces(~stm)) || (~stm == sideToMove && is_gating(m) && (gating_type(m) == HAWK ? attacks_bb<HAWK>(from, occupied) : attacks_bb<ELEPHANT>(from, occupied))));
+          return relativeStm == bool(attackers & pieces(~stm));
 
       balance += relativeStm ?  PieceValue[MG][nextVictim]
                              : -PieceValue[MG][nextVictim];
@@ -1238,8 +1252,8 @@ bool Position::pos_is_ok() const {
 
   if (   (pieces(WHITE) & pieces(BLACK))
       || (pieces(WHITE) | pieces(BLACK)) != pieces()
-      || popcount(pieces(WHITE)) > 16
-      || popcount(pieces(BLACK)) > 16)
+      || popcount(pieces(WHITE)) > 18
+      || popcount(pieces(BLACK)) > 18)
       assert(0 && "pos_is_ok: Bitboards");
 
   for (PieceType p1 = PAWN; p1 <= KING; ++p1)

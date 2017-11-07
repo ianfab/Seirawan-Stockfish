@@ -45,7 +45,6 @@ struct StateInfo {
   int    pliesFromNull;
   Score  psq;
   Square epSquare;
-  int    inHand[COLOR_NB][2];
   Bitboard gatesBB;
 
   // Not copied when making a move (will be recomputed anyhow)
@@ -106,8 +105,7 @@ public:
   int can_castle(CastlingRight cr) const;
   bool castling_impeded(CastlingRight cr) const;
   Square castling_rook_square(CastlingRight cr) const;
-  bool has_hawk(Color c) const;
-  bool has_elephant(Color c) const;
+  bool in_hand(Color c, PieceType pt) const;
   Bitboard gates(Color c) const;
 
   // Checking
@@ -188,6 +186,7 @@ private:
   Piece board[SQUARE_NB];
   Bitboard byTypeBB[PIECE_TYPE_NB];
   Bitboard byColorBB[COLOR_NB];
+  bool inHand[COLOR_NB][PIECE_TYPE_NB+1]; // The +1 is a hack to allow inHand[c][gating_type(m)]
   int pieceCount[PIECE_NB];
   Square pieceList[PIECE_NB][16];
   int index[SQUARE_NB];
@@ -272,12 +271,8 @@ inline Square Position::ep_square() const {
   return st->epSquare;
 }
 
-inline bool Position::has_hawk(Color c) const {
-  return st->inHand[c][0];
-}
-
-inline bool Position::has_elephant(Color c) const {
-  return st->inHand[c][1];
+inline bool Position::in_hand(Color c, PieceType pt) const {
+  return inHand[c][pt];
 }
 
 inline Bitboard Position::gates(Color c) const {
@@ -439,12 +434,12 @@ inline void Position::remove_piece(Piece pc, Square s) {
 
 inline void Position::add_to_hand(Color c, PieceType pt) {
   assert(pt == HAWK || pt == ELEPHANT);
-  st->inHand[c][pt == ELEPHANT]++;
+  inHand[c][pt] = true;
 }
 
 inline void Position::remove_from_hand(Color c, PieceType pt) {
   assert(pt == HAWK || pt == ELEPHANT);
-  st->inHand[c][pt == ELEPHANT]--;
+  inHand[c][pt] = false;
 }
 
 inline void Position::move_piece(Piece pc, Square from, Square to) {
