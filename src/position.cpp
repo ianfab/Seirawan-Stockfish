@@ -37,12 +37,14 @@
 using std::string;
 
 namespace PSQT {
-  extern Score psq[PIECE_NB][SQUARE_NB + 1];
+  extern Score psq[PIECE_NB][SQUARE_NB];
+  extern Score inhand[PIECE_NB];
 }
 
 namespace Zobrist {
 
-  Key psq[PIECE_NB][SQUARE_NB + 1];
+  Key psq[PIECE_NB][SQUARE_NB];
+  Key inhand[PIECE_NB];
   Key enpassant[FILE_NB];
   Key castling[CASTLING_RIGHT_NB];
   Key side, noPawns;
@@ -133,8 +135,11 @@ void Position::init() {
   PRNG rng(1070372);
 
   for (Piece pc : Pieces)
-      for (Square s = SQ_A1; s <= SQUARE_NB; ++s)
+  {
+      for (Square s = SQ_A1; s < SQUARE_NB; ++s)
           Zobrist::psq[pc][s] = rng.rand<Key>();
+      Zobrist::inhand[pc] = rng.rand<Key>();
+  }
 
   for (File f = FILE_A; f <= FILE_H; ++f)
       Zobrist::enpassant[f] = rng.rand<Key>();
@@ -384,8 +389,8 @@ void Position::set_state(StateInfo* si) const {
       for (PieceType pt : {HAWK, ELEPHANT})
           if (in_hand(c, pt))
           {
-              si->psq += PSQT::psq[make_piece(c, pt)][SQUARE_NB];
-              si->key ^= Zobrist::psq[make_piece(c, pt)][SQUARE_NB];
+              si->psq += PSQT::inhand[make_piece(c, pt)];
+              si->key ^= Zobrist::inhand[make_piece(c, pt)];
           }
 
   if (si->epSquare != SQ_NONE)
@@ -898,9 +903,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       put_piece(gating_piece, gating_square);
       remove_from_hand(sideToMove, gating_type(m));
       st->gatesBB = st->gatesBB & ~SquareBB[gating_square];
-      st->psq +=  PSQT::psq[gating_piece][gating_square]
-                - PSQT::psq[gating_piece][SQUARE_NB];
-      k ^= Zobrist::psq[gating_piece][gating_square] ^ Zobrist::psq[gating_piece][SQUARE_NB];
+      st->psq += PSQT::psq[gating_piece][gating_square] - PSQT::inhand[gating_piece];
+      k ^= Zobrist::psq[gating_piece][gating_square] ^ Zobrist::inhand[gating_piece];
       st->materialKey ^= Zobrist::psq[gating_piece][pieceCount[gating_piece]-1];
       st->nonPawnMaterial[us] += PieceValue[MG][gating_piece];
   }
