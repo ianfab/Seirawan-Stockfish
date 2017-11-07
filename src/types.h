@@ -111,14 +111,14 @@ const int MAX_PLY   = 128;
 /// bit 14-15: special move flag: promotion (1), en passant (2), castling (3)
 /// NOTE: EN-PASSANT bit is set only when a pawn can be captured
 ///
-/// Gating moves are encoded by adding (gated piece type - KING) in bits 12-13.
+/// Gating moves are encoded by adding (gated piece type - ROOK) in bits 12-13.
 ///
 /// For castling moves where a piece is gated on the rook square, bits 14-15
 /// are changed to PROMOTION in order to distinguish them from castling moves
 /// where the piece is gated on the king's origin square.
 ///
-/// Promotions to HAWK or ELEPHANT are encoded by settting bits 14-15 to ENPASSANT,
-/// and bits 12-13 are set to (promoted piece type - KING).
+/// Promotions to HAWK, ELEPHANT or QUEEN are encoded by settting bits 14-15
+/// to ENPASSANT, and bits 12-13 are set to (promoted piece type - ROOK).
 ///
 /// Special cases are MOVE_NONE and MOVE_NULL. We can sneak these in because in
 /// any normal move destination square is always different from origin square
@@ -206,15 +206,15 @@ enum Value : int {
 };
 
 enum PieceType {
-  NO_PIECE_TYPE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, HAWK, ELEPHANT,
+  NO_PIECE_TYPE, PAWN, KNIGHT, BISHOP, ROOK, HAWK, ELEPHANT, QUEEN, KING,
   ALL_PIECES = 0,
   PIECE_TYPE_NB = 9
 };
 
 enum Piece {
   NO_PIECE,
-  W_PAWN = 1,  W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING, W_HAWK, W_ELEPHANT,
-  B_PAWN = 10, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING, B_HAWK, B_ELEPHANT,
+  W_PAWN = 1,  W_KNIGHT, W_BISHOP, W_ROOK, W_HAWK, W_ELEPHANT, W_QUEEN, W_KING,
+  B_PAWN = 10, B_KNIGHT, B_BISHOP, B_ROOK, B_HAWK, B_ELEPHANT, B_QUEEN, B_KING,
   PIECE_NB = 18
 };
 
@@ -456,7 +456,7 @@ inline MoveType type_of(Move m) {
 
 inline PieceType promotion_type(Move m) {
   if ((m & (3 << 14)) == PROMOTION2)
-      return PieceType(((m >> 12) & 3) + KING);
+      return PieceType(((m >> 12) & 3) + ROOK);
   return PieceType(((m >> 12) & 3) + KNIGHT);
 }
 
@@ -466,13 +466,13 @@ inline Move make_move(Square from, Square to) {
 
 template<MoveType T>
 inline Move make(Square from, Square to, PieceType pt = KNIGHT) {
-  if (pt > KING)
-      return Move(T + ((pt - KING) << 12) + (from << 6) + to);
+  if (pt > ROOK)
+      return Move(T + ((pt - ROOK) << 12) + (from << 6) + to);
   return Move(T + ((pt - KNIGHT) << 12) + (from << 6) + to);
 }
 
 inline PieceType gating_type(Move m) {
-  return PieceType(((m >> 12) & 3) + KING);
+  return PieceType(((m >> 12) & 3) + ROOK);
 }
 
 inline bool is_ok(Move m) {

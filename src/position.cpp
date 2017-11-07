@@ -52,10 +52,10 @@ namespace Zobrist {
 
 namespace {
 
-const string PieceToChar(" PNBRQKHE pnbrqkhe");
+const string PieceToChar(" PNBRHEQK pnbrheqk");
 
-const Piece Pieces[] = { W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING, W_HAWK, W_ELEPHANT,
-                         B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING, B_HAWK, B_ELEPHANT };
+const Piece Pieces[] = { W_PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_HAWK, W_ELEPHANT, W_QUEEN, W_KING,
+                         B_PAWN, B_KNIGHT, B_BISHOP, B_ROOK, B_HAWK, B_ELEPHANT, B_QUEEN, B_KING };
 
 // min_attacker() is a helper function used by see_ge() to locate the least
 // valuable attacker for the side to move, remove the attacker we just found
@@ -355,10 +355,10 @@ void Position::set_check_info(StateInfo* si) const {
   si->checkSquares[KNIGHT]    = attacks_from<KNIGHT>(ksq);
   si->checkSquares[BISHOP]    = attacks_from<BISHOP>(ksq);
   si->checkSquares[ROOK]      = attacks_from<ROOK>(ksq);
-  si->checkSquares[QUEEN]     = si->checkSquares[BISHOP] | si->checkSquares[ROOK];
-  si->checkSquares[KING]      = 0;
   si->checkSquares[HAWK]      = si->checkSquares[KNIGHT] | si->checkSquares[BISHOP];
   si->checkSquares[ELEPHANT]  = si->checkSquares[KNIGHT] | si->checkSquares[ROOK];
+  si->checkSquares[QUEEN]     = si->checkSquares[BISHOP] | si->checkSquares[ROOK];
+  si->checkSquares[KING]      = 0;
 }
 
 
@@ -548,9 +548,9 @@ Bitboard Position::attackers_to(Square s, Bitboard occupied) const {
 
   return  (attacks_from<PAWN>(s, BLACK)    & pieces(WHITE, PAWN))
         | (attacks_from<PAWN>(s, WHITE)    & pieces(BLACK, PAWN))
-        | (attacks_from<KNIGHT>(s)         & pieces(KNIGHT,  HAWK, ELEPHANT))
-        | (attacks_bb<  ROOK>(s, occupied) & pieces(  ROOK, QUEEN, ELEPHANT))
-        | (attacks_bb<BISHOP>(s, occupied) & pieces(BISHOP, QUEEN, HAWK))
+        | (attacks_from<KNIGHT>(s)         & pieces(KNIGHT, HAWK, ELEPHANT))
+        | (attacks_bb<  ROOK>(s, occupied) & pieces(ROOK, ELEPHANT, QUEEN))
+        | (attacks_bb<BISHOP>(s, occupied) & pieces(BISHOP, HAWK, QUEEN))
         | (attacks_from<KING>(s)           & pieces(KING));
 }
 
@@ -614,14 +614,9 @@ bool Position::pseudo_legal(const Move m) const {
   if (type_of(m) != NORMAL)
       return MoveList<LEGAL>(*this).contains(m);
   
-  // Illegal gating type. This type of error could not happen if we move
-  // all gateable pieces next to each other in the PieceType enum.
-  if (gating_type(m) == KING + 3)
-      return false;
-
   // If the move gates a piece make sure we have that piece in hand
   // and that we are allowed to gate on the from square.
-  if (gating_type(m) != KING && !(in_hand(us, gating_type(m)) && (gates(us) & from)))
+  if (gating_type(m) != ROOK && !(in_hand(us, gating_type(m)) && (gates(us) & from)))
       return false;
 
   // If the 'from' square is not occupied by a piece belonging to the side to
@@ -867,7 +862,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
           Piece promotion = make_piece(us, promotion_type(m));
 
           assert(relative_rank(us, to) == RANK_8);
-          assert(type_of(promotion) >= KNIGHT && type_of(promotion) <= ELEPHANT);
+          assert(type_of(promotion) >= KNIGHT && type_of(promotion) <= QUEEN);
 
           remove_piece(pc, to);
           put_piece(promotion, to);
@@ -902,7 +897,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   // Add gating piece
   if (is_gating(m))
   {
-      assert(gating_type(m) == HAWK || gating_type(m) == ELEPHANT);
+      assert(gating_type(m) >= HAWK && gating_type(m) <= QUEEN);
 
       Square gating_square = gating_on_castling_rook(m) ? to_sq(m) : from_sq(m);
       Piece gating_piece = make_piece(sideToMove, gating_type(m));
@@ -966,7 +961,7 @@ void Position::undo_move(Move m) {
   {
       assert(relative_rank(us, to) == RANK_8);
       assert(type_of(pc) == promotion_type(m));
-      assert(type_of(pc) >= KNIGHT && type_of(pc) <= ELEPHANT);
+      assert(type_of(pc) >= KNIGHT && type_of(pc) <= QUEEN);
 
       remove_piece(pc, to);
       pc = make_piece(us, PAWN);

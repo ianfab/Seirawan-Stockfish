@@ -159,12 +159,6 @@ namespace {
     { S(-58,-76), S(-27,-18), S(-15, 28), S(-10, 55), S( -5, 69), S( -2, 82), // Rooks
       S(  9,112), S( 16,118), S( 30,132), S( 29,142), S( 32,155), S( 38,165),
       S( 46,166), S( 48,169), S( 58,171) },
-    { S(-39,-36), S(-21,-15), S(  3,  8), S(  3, 18), S( 14, 34), S( 22, 54), // Queens
-      S( 28, 61), S( 41, 73), S( 43, 79), S( 48, 92), S( 56, 94), S( 60,104),
-      S( 60,113), S( 66,120), S( 67,123), S( 70,126), S( 71,133), S( 73,136),
-      S( 79,140), S( 88,143), S( 88,148), S( 99,166), S(102,170), S(102,175),
-      S(106,184), S(109,191), S(113,206), S(116,212) },
-    {}, // King
     { S(-39,-36), S(-21,-15), S(  3,  8), S(  3, 18), S( 14, 34), S( 22, 54), // Hawk
       S( 28, 61), S( 41, 73), S( 43, 79), S( 48, 92), S( 56, 94), S( 60,104),
       S( 60,113), S( 66,120), S( 67,123), S( 70,126), S( 71,133), S( 73,136),
@@ -172,7 +166,13 @@ namespace {
     { S(-39,-36), S(-21,-15), S(  3,  8), S(  3, 18), S( 14, 34), S( 22, 54), // Elephant
       S( 28, 61), S( 41, 73), S( 43, 79), S( 48, 92), S( 56, 94), S( 60,104),
       S( 60,113), S( 66,120), S( 67,123), S( 70,126), S( 71,133), S( 73,136),
-      S( 79,140), S( 88,143), S( 88,148), S( 99,166), S(102,170) }
+      S( 79,140), S( 88,143), S( 88,148), S( 99,166), S(102,170) },
+    { S(-39,-36), S(-21,-15), S(  3,  8), S(  3, 18), S( 14, 34), S( 22, 54), // Queens
+      S( 28, 61), S( 41, 73), S( 43, 79), S( 48, 92), S( 56, 94), S( 60,104),
+      S( 60,113), S( 66,120), S( 67,123), S( 70,126), S( 71,133), S( 73,136),
+      S( 79,140), S( 88,143), S( 88,148), S( 99,166), S(102,170), S(102,175),
+      S(106,184), S(109,191), S(113,206), S(116,212) },
+    {} // King
   };
 
   // Outpost[knight/bishop][supported by pawn] contains bonuses for minor
@@ -192,11 +192,11 @@ namespace {
   // which piece type attacks which one. Attacks on lesser pieces which are
   // pawn-defended are not considered.
   const Score ThreatByMinor[PIECE_TYPE_NB] = {
-    S(0, 0), S(0, 33), S(45, 43), S(46, 47), S(72, 107), S(48, 118)
+    S(0, 0), S(0, 33), S(45, 43), S(46, 47), S(72, 107), S(0, 0), S(0, 0), S(48, 118)
   };
 
   const Score ThreatByRook[PIECE_TYPE_NB] = {
-    S(0, 0), S(0, 25), S(40, 62), S(40, 59), S(0, 34), S(35, 48)
+    S(0, 0), S(0, 25), S(40, 62), S(40, 59), S(0, 34), S(0, 0), S(0, 0), S(35, 48)
   };
 
   // ThreatByKing[on one/on many] contains bonuses for king attacks on
@@ -217,7 +217,7 @@ namespace {
   };
 
   // KingProtector[PieceType-2] contains a bonus according to distance from king
-  const Score KingProtector[] = { S(-3, -5), S(-4, -3), S(-3, 0), S(-1, 1), S(0, 0), S(0, 0), S(0, 0) };
+  const Score KingProtector[] = { S(-3, -5), S(-4, -3), S(-3, 0), S(0, 0), S(0, 0), S(-1, 1), S(0, 0) };
 
   // Assorted bonuses and penalties used by evaluation
   const Score MinorBehindPawn     = S( 16,  0);
@@ -242,7 +242,7 @@ namespace {
   #undef V
 
   // KingAttackWeights[PieceType] contains king attack weights by piece type
-  const int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 78, 56, 45, 11, 0, 10, 10 };
+  const int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 78, 56, 45, 10, 10, 11, 0 };
 
   // Penalties for enemy's safe checks
   const int QueenCheck  = 780;
@@ -315,8 +315,8 @@ namespace {
     while ((s = *pl++) != SQ_NONE)
     {
         // Find attacked squares, including x-ray attacks for bishops and rooks
-        b = Pt == BISHOP ? attacks_bb<BISHOP>(s, pos.pieces() ^ pos.pieces(Us, QUEEN, HAWK))
-          : Pt ==   ROOK ? attacks_bb<  ROOK>(s, pos.pieces() ^ pos.pieces(Us, ROOK, QUEEN, ELEPHANT))
+        b = Pt == BISHOP ? attacks_bb<BISHOP>(s, pos.pieces() ^ pos.pieces(Us, HAWK, QUEEN))
+          : Pt ==   ROOK ? attacks_bb<  ROOK>(s, pos.pieces() ^ pos.pieces(Us, ROOK, ELEPHANT, QUEEN))
                          : pos.attacks_from<Pt>(s);
 
         if (pos.pinned_pieces(Us) & s)
@@ -867,9 +867,9 @@ namespace {
     score += evaluate_pieces<WHITE, KNIGHT  >() - evaluate_pieces<BLACK, KNIGHT  >();
     score += evaluate_pieces<WHITE, BISHOP  >() - evaluate_pieces<BLACK, BISHOP  >();
     score += evaluate_pieces<WHITE, ROOK    >() - evaluate_pieces<BLACK, ROOK    >();
-    score += evaluate_pieces<WHITE, QUEEN   >() - evaluate_pieces<BLACK, QUEEN   >();
     score += evaluate_pieces<WHITE, HAWK    >() - evaluate_pieces<BLACK, HAWK    >();
     score += evaluate_pieces<WHITE, ELEPHANT>() - evaluate_pieces<BLACK, ELEPHANT>();
+    score += evaluate_pieces<WHITE, QUEEN   >() - evaluate_pieces<BLACK, QUEEN   >();
 
     score += mobility[WHITE] - mobility[BLACK];
 
