@@ -382,7 +382,7 @@ void Position::set_state(StateInfo* si) const {
   si->psq += PSQT::psq[W_HAWK][SQUARE_NB] * si->inHand[WHITE][0] + PSQT::psq[W_ELEPHANT][SQUARE_NB] * si->inHand[WHITE][1];
   si->psq += PSQT::psq[B_HAWK][SQUARE_NB] * si->inHand[BLACK][0] + PSQT::psq[B_ELEPHANT][SQUARE_NB] * si->inHand[BLACK][1];
   si->key ^= Zobrist::psq[W_HAWK][SQUARE_NB] * si->inHand[WHITE][0] ^ Zobrist::psq[W_ELEPHANT][SQUARE_NB] * si->inHand[WHITE][1];
-  si->key ^= Zobrist::psq[B_HAWK][SQUARE_NB] * si->inHand[WHITE][0] ^ Zobrist::psq[B_ELEPHANT][SQUARE_NB] * si->inHand[WHITE][1];
+  si->key ^= Zobrist::psq[B_HAWK][SQUARE_NB] * si->inHand[BLACK][0] ^ Zobrist::psq[B_ELEPHANT][SQUARE_NB] * si->inHand[BLACK][1];
 
   if (si->epSquare != SQ_NONE)
       si->key ^= Zobrist::enpassant[file_of(si->epSquare)];
@@ -897,7 +897,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       st->psq +=  PSQT::psq[gating_piece][gating_square]
                 - PSQT::psq[gating_piece][SQUARE_NB];
       k ^= Zobrist::psq[gating_piece][gating_square] ^ Zobrist::psq[gating_piece][SQUARE_NB];
-      st->materialKey ^= Zobrist::psq[gating_piece][pieceCount[gating_piece]];
+      st->materialKey ^= Zobrist::psq[gating_piece][pieceCount[gating_piece]-1];
       st->nonPawnMaterial[us] += PieceValue[MG][gating_piece];
   }
 
@@ -1238,8 +1238,8 @@ bool Position::pos_is_ok() const {
 
   if (   (pieces(WHITE) & pieces(BLACK))
       || (pieces(WHITE) | pieces(BLACK)) != pieces()
-      || popcount(pieces(WHITE)) > 16
-      || popcount(pieces(BLACK)) > 16)
+      || popcount(pieces(WHITE)) > 18
+      || popcount(pieces(BLACK)) > 18)
       assert(0 && "pos_is_ok: Bitboards");
 
   for (PieceType p1 = PAWN; p1 <= KING; ++p1)
