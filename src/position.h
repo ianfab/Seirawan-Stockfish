@@ -186,7 +186,7 @@ private:
   Piece board[SQUARE_NB];
   Bitboard byTypeBB[PIECE_TYPE_NB];
   Bitboard byColorBB[COLOR_NB];
-  bool inHand[COLOR_NB][PIECE_TYPE_NB];
+  bool inHand[COLOR_NB][PIECE_TYPE_NB+1]; // The +1 is a hack to allow inHand[c][gating_type(m)]
   int pieceCount[PIECE_NB];
   Square pieceList[PIECE_NB][16];
   int index[SQUARE_NB];
