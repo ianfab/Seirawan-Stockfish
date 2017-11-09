@@ -61,13 +61,13 @@ namespace {
         return moveList;
 
     *moveList++ = m;
-    if (pos.has_hawk(us))
+    if (pos.in_hand(us, HAWK))
         *moveList++ = make<CASTLING >(kfrom, rfrom, HAWK);
-    if (pos.has_elephant(us))
+    if (pos.in_hand(us, ELEPHANT))
         *moveList++ = make<CASTLING >(kfrom, rfrom, ELEPHANT);
-    if (pos.has_hawk(us))
+    if (pos.in_hand(us, HAWK))
         *moveList++ = make<CASTLING2>(kfrom, rfrom, HAWK);
-    if (pos.has_elephant(us))
+    if (pos.in_hand(us, ELEPHANT))
         *moveList++ = make<CASTLING2>(kfrom, rfrom, ELEPHANT);
     return moveList;
   }
@@ -269,9 +269,9 @@ namespace {
             *moveList++ = make_move(from, s);
             if (pos.gates(us) & from)
             {
-                if (pos.has_hawk(us))
+                if (pos.in_hand(us, HAWK))
                     *moveList++ = make<NORMAL>(from, s, HAWK);
-                if (pos.has_elephant(us))
+                if (pos.in_hand(us, ELEPHANT))
                     *moveList++ = make<NORMAL>(from, s, ELEPHANT);
             }
         }
@@ -304,9 +304,9 @@ namespace {
             *moveList++ = make_move(ksq, s);
             if (pos.gates(Us) & ksq)
             {
-                if (pos.has_hawk(Us))
+                if (pos.in_hand(Us, HAWK))
                     *moveList++ = make<NORMAL>(ksq, s, HAWK);
-                if (pos.has_elephant(Us))
+                if (pos.in_hand(Us, ELEPHANT))
                     *moveList++ = make<NORMAL>(ksq, s, ELEPHANT);
             }
         }
@@ -424,9 +424,9 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
       *moveList++ = make_move(ksq, s);
       if (pos.gates(us) & ksq)
       {
-          if (pos.has_hawk(us))
+          if (pos.in_hand(us, HAWK))
               *moveList++ = make<NORMAL>(ksq, s, HAWK);
-          if (pos.has_elephant(us))
+          if (pos.in_hand(us, ELEPHANT))
               *moveList++ = make<NORMAL>(ksq, s, ELEPHANT);
       }
   }

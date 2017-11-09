@@ -379,10 +379,14 @@ void Position::set_state(StateInfo* si) const {
       si->key ^= Zobrist::psq[pc][s];
       si->psq += PSQT::psq[pc][s];
   }
-  si->psq += PSQT::psq[W_HAWK][SQUARE_NB] * si->inHand[WHITE][0] + PSQT::psq[W_ELEPHANT][SQUARE_NB] * si->inHand[WHITE][1];
-  si->psq += PSQT::psq[B_HAWK][SQUARE_NB] * si->inHand[BLACK][0] + PSQT::psq[B_ELEPHANT][SQUARE_NB] * si->inHand[BLACK][1];
-  si->key ^= Zobrist::psq[W_HAWK][SQUARE_NB] * si->inHand[WHITE][0] ^ Zobrist::psq[W_ELEPHANT][SQUARE_NB] * si->inHand[WHITE][1];
-  si->key ^= Zobrist::psq[B_HAWK][SQUARE_NB] * si->inHand[BLACK][0] ^ Zobrist::psq[B_ELEPHANT][SQUARE_NB] * si->inHand[BLACK][1];
+
+  for (Color c = WHITE; c <= BLACK; ++c)
+      for (PieceType pt : {HAWK, ELEPHANT})
+          if (in_hand(c, pt))
+          {
+              si->psq += PSQT::psq[make_piece(c, pt)][SQUARE_NB];
+              si->key ^= Zobrist::psq[make_piece(c, pt)][SQUARE_NB];
+          }
 
   if (si->epSquare != SQ_NONE)
       si->key ^= Zobrist::enpassant[file_of(si->epSquare)];
@@ -459,7 +463,7 @@ const string Position::fen() const {
   ss << '[';
   for (Color c = WHITE; c <= BLACK; ++c)
       for (PieceType pt = HAWK; pt <= ELEPHANT; ++pt)
-          ss << std::string(st->inHand[c][pt == ELEPHANT], PieceToChar[make_piece(c, pt)]);
+          ss << std::string(in_hand(c, pt), PieceToChar[make_piece(c, pt)]);
   ss << ']';
 
   ss << (sideToMove == WHITE ? " w " : " b ");
@@ -946,7 +950,6 @@ void Position::undo_move(Move m) {
       Piece gating_piece = make_piece(sideToMove, gating_type(m));
       remove_piece(gating_piece, gating_square);
       add_to_hand(sideToMove, gating_type(m));
-      st->gatesBB = st->gatesBB | gating_square;
   }
 
   if (type_of(m) == PROMOTION)
