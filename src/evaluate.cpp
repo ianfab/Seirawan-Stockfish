@@ -554,7 +554,7 @@ namespace {
     Score score = SCORE_ZERO;
 
     // Penalty for running out of gates
-    Value v = (HawkValueMg * pos.has_hawk(Us) + ElephantValueMg * pos.has_elephant(Us)) / (1 + popcount(pos.gates(Us)));
+    Value v = (HawkValueMg * pos.in_hand(Us, HAWK) + ElephantValueMg * pos.in_hand(Us, ELEPHANT)) / (1 + popcount(pos.gates(Us)));
     score -= make_score(v, v);
 
     // Non-pawn enemies attacked by a pawn

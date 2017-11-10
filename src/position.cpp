@@ -37,12 +37,14 @@
 using std::string;
 
 namespace PSQT {
-  extern Score psq[PIECE_NB][SQUARE_NB + 1];
+  extern Score psq[PIECE_NB][SQUARE_NB];
+  extern Score inhand[PIECE_NB];
 }
 
 namespace Zobrist {
 
-  Key psq[PIECE_NB][SQUARE_NB + 1];
+  Key psq[PIECE_NB][SQUARE_NB];
+  Key inhand[PIECE_NB];
   Key enpassant[FILE_NB];
   Key castling[CASTLING_RIGHT_NB];
   Key side, noPawns;
@@ -133,8 +135,11 @@ void Position::init() {
   PRNG rng(1070372);
 
   for (Piece pc : Pieces)
-      for (Square s = SQ_A1; s <= SQUARE_NB; ++s)
+  {
+      for (Square s = SQ_A1; s < SQUARE_NB; ++s)
           Zobrist::psq[pc][s] = rng.rand<Key>();
+      Zobrist::inhand[pc] = rng.rand<Key>();
+  }
 
   for (File f = FILE_A; f <= FILE_H; ++f)
       Zobrist::enpassant[f] = rng.rand<Key>();
@@ -379,10 +384,14 @@ void Position::set_state(StateInfo* si) const {
       si->key ^= Zobrist::psq[pc][s];
       si->psq += PSQT::psq[pc][s];
   }
-  si->psq += PSQT::psq[W_HAWK][SQUARE_NB] * si->inHand[WHITE][0] + PSQT::psq[W_ELEPHANT][SQUARE_NB] * si->inHand[WHITE][1];
-  si->psq += PSQT::psq[B_HAWK][SQUARE_NB] * si->inHand[BLACK][0] + PSQT::psq[B_ELEPHANT][SQUARE_NB] * si->inHand[BLACK][1];
-  si->key ^= Zobrist::psq[W_HAWK][SQUARE_NB] * si->inHand[WHITE][0] ^ Zobrist::psq[W_ELEPHANT][SQUARE_NB] * si->inHand[WHITE][1];
-  si->key ^= Zobrist::psq[B_HAWK][SQUARE_NB] * si->inHand[BLACK][0] ^ Zobrist::psq[B_ELEPHANT][SQUARE_NB] * si->inHand[BLACK][1];
+
+  for (Color c = WHITE; c <= BLACK; ++c)
+      for (PieceType pt : {HAWK, ELEPHANT})
+          if (in_hand(c, pt))
+          {
+              si->psq += PSQT::inhand[make_piece(c, pt)];
+              si->key ^= Zobrist::inhand[make_piece(c, pt)];
+          }
 
   if (si->epSquare != SQ_NONE)
       si->key ^= Zobrist::enpassant[file_of(si->epSquare)];
@@ -459,7 +468,7 @@ const string Position::fen() const {
   ss << '[';
   for (Color c = WHITE; c <= BLACK; ++c)
       for (PieceType pt = HAWK; pt <= ELEPHANT; ++pt)
-          ss << std::string(st->inHand[c][pt == ELEPHANT], PieceToChar[make_piece(c, pt)]);
+          ss << std::string(in_hand(c, pt), PieceToChar[make_piece(c, pt)]);
   ss << ']';
 
   ss << (sideToMove == WHITE ? " w " : " b ");
@@ -602,11 +611,17 @@ bool Position::pseudo_legal(const Move m) const {
   Piece pc = moved_piece(m);
 
   // Use a slower but simpler function for uncommon cases
-  if (type_of(m) != NORMAL || is_gating(m))
+  if (type_of(m) != NORMAL)
       return MoveList<LEGAL>(*this).contains(m);
+  
+  // Illegal gating type. This type of error could not happen if we move
+  // all gateable pieces next to each other in the PieceType enum.
+  if (gating_type(m) == KING + 3)
+      return false;
 
-  // Is not a promotion, so promotion piece must be empty
-  if (promotion_type(m) - KNIGHT != NO_PIECE_TYPE)
+  // If the move gates a piece make sure we have that piece in hand
+  // and that we are allowed to gate on the from square.
+  if (gating_type(m) != KING && !(in_hand(us, gating_type(m)) && (gates(us) & from)))
       return false;
 
   // If the 'from' square is not occupied by a piece belonging to the side to
@@ -894,9 +909,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       put_piece(gating_piece, gating_square);
       remove_from_hand(sideToMove, gating_type(m));
       st->gatesBB = st->gatesBB & ~SquareBB[gating_square];
-      st->psq +=  PSQT::psq[gating_piece][gating_square]
-                - PSQT::psq[gating_piece][SQUARE_NB];
-      k ^= Zobrist::psq[gating_piece][gating_square] ^ Zobrist::psq[gating_piece][SQUARE_NB];
+      st->psq += PSQT::psq[gating_piece][gating_square] - PSQT::inhand[gating_piece];
+      k ^= Zobrist::psq[gating_piece][gating_square] ^ Zobrist::inhand[gating_piece];
       st->materialKey ^= Zobrist::psq[gating_piece][pieceCount[gating_piece]-1];
       st->nonPawnMaterial[us] += PieceValue[MG][gating_piece];
   }
@@ -946,7 +960,6 @@ void Position::undo_move(Move m) {
       Piece gating_piece = make_piece(sideToMove, gating_type(m));
       remove_piece(gating_piece, gating_square);
       add_to_hand(sideToMove, gating_type(m));
-      st->gatesBB = st->gatesBB | gating_square;
   }
 
   if (type_of(m) == PROMOTION)

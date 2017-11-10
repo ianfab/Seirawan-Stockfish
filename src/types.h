@@ -118,7 +118,7 @@ const int MAX_PLY   = 128;
 /// where the piece is gated on the king's origin square.
 ///
 /// Promotions to HAWK or ELEPHANT are encoded by settting bits 14-15 to ENPASSANT,
-/// and bits 12-13 are set to (gated piece type - KING).
+/// and bits 12-13 are set to (promoted piece type - KING).
 ///
 /// Special cases are MOVE_NONE and MOVE_NULL. We can sneak these in because in
 /// any normal move destination square is always different from origin square
