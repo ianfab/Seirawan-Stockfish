@@ -44,8 +44,8 @@ namespace {
 
     enum Tracing {NO_TRACE, TRACE};
 
-    enum Term { // The first 8 entries are for PieceType
-      MATERIAL = 8, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, TOTAL, TERM_NB
+    enum Term { // The first 9 entries are for PieceType
+      MATERIAL = 9, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, TOTAL, TERM_NB
     };
 
     double scores[TERM_NB][COLOR_NB][PHASE_NB];
@@ -943,6 +943,8 @@ std::string Eval::trace(const Position& pos) {
      << "        Knights | " << Term(KNIGHT)
      << "        Bishops | " << Term(BISHOP)
      << "          Rooks | " << Term(ROOK)
+     << "          Hawks | " << Term(HAWK)
+     << "      Elephants | " << Term(ELEPHANT)
      << "         Queens | " << Term(QUEEN)
      << "       Mobility | " << Term(MOBILITY)
      << "    King safety | " << Term(KING)
