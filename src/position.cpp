@@ -67,15 +67,15 @@ PieceType min_attacker(const Bitboard* bb, Square to, Bitboard stmAttackers,
 
   Bitboard b = stmAttackers & bb[Pt];
   if (!b)
-      return min_attacker<Pt == ELEPHANT ? QUEEN : (Pt == ROOK ? HAWK : Pt + 1)>(bb, to, stmAttackers, occupied, attackers);
+      return min_attacker<Pt + 1>(bb, to, stmAttackers, occupied, attackers);
 
   occupied ^= b & ~(b - 1);
 
-  if (Pt == PAWN || Pt == BISHOP || Pt == QUEEN || Pt == HAWK)
-      attackers |= attacks_bb<BISHOP>(to, occupied) & (bb[BISHOP] | bb[QUEEN] | bb[HAWK]);
+  if (Pt == PAWN || Pt == BISHOP || Pt == HAWK || Pt == QUEEN)
+      attackers |= attacks_bb<BISHOP>(to, occupied) & (bb[BISHOP] | bb[HAWK] | bb[QUEEN]);
 
-  if (Pt == ROOK || Pt == QUEEN || Pt == ELEPHANT)
-      attackers |= attacks_bb<ROOK>(to, occupied) & (bb[ROOK] | bb[QUEEN] | bb[ELEPHANT]);
+  if (Pt == ROOK || Pt == ELEPHANT || Pt == QUEEN)
+      attackers |= attacks_bb<ROOK>(to, occupied) & (bb[ROOK] | bb[ELEPHANT] | bb[QUEEN]);
 
   attackers &= occupied; // After X-ray that may add already processed pieces
   return (PieceType)Pt;
@@ -897,7 +897,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   // Add gating piece
   if (is_gating(m))
   {
-      assert(gating_type(m) >= HAWK && gating_type(m) <= QUEEN);
+      assert(gating_type(m) >= HAWK && gating_type(m) <= ELEPHANT);
 
       Square gating_square = gating_on_castling_rook(m) ? to_sq(m) : from_sq(m);
       Piece gating_piece = make_piece(sideToMove, gating_type(m));

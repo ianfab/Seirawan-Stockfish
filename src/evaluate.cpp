@@ -171,8 +171,7 @@ namespace {
       S( 28, 61), S( 41, 73), S( 43, 79), S( 48, 92), S( 56, 94), S( 60,104),
       S( 60,113), S( 66,120), S( 67,123), S( 70,126), S( 71,133), S( 73,136),
       S( 79,140), S( 88,143), S( 88,148), S( 99,166), S(102,170), S(102,175),
-      S(106,184), S(109,191), S(113,206), S(116,212) },
-    {} // King
+      S(106,184), S(109,191), S(113,206), S(116,212) }
   };
 
   // Outpost[knight/bishop][supported by pawn] contains bonuses for minor
@@ -217,7 +216,7 @@ namespace {
   };
 
   // KingProtector[PieceType-2] contains a bonus according to distance from king
-  const Score KingProtector[] = { S(-3, -5), S(-4, -3), S(-3, 0), S(0, 0), S(0, 0), S(-1, 1), S(0, 0) };
+  const Score KingProtector[] = { S(-3, -5), S(-4, -3), S(-3, 0), S(0, 0), S(0, 0), S(-1, 1) };
 
   // Assorted bonuses and penalties used by evaluation
   const Score MinorBehindPawn     = S( 16,  0);
@@ -242,7 +241,7 @@ namespace {
   #undef V
 
   // KingAttackWeights[PieceType] contains king attack weights by piece type
-  const int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 78, 56, 45, 10, 10, 11, 0 };
+  const int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 78, 56, 45, 10, 10, 11 };
 
   // Penalties for enemy's safe checks
   const int QueenCheck  = 780;
