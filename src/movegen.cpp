@@ -77,23 +77,23 @@ namespace {
   ExtMove* make_promotions(ExtMove* moveList, Square to, Square ksq) {
 
     if (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
-        *moveList++ = make<PROMOTION2>(to - D, to, QUEEN);
+        *moveList++ = make<PROMOTION>(to - D, to, QUEEN);
 
     if (Type == QUIETS || Type == EVASIONS || Type == NON_EVASIONS)
     {
-        *moveList++ = make<PROMOTION2>(to - D, to, ELEPHANT);
-        *moveList++ = make<PROMOTION2>(to - D, to, HAWK);
-        *moveList++ = make<PROMOTION >(to - D, to, ROOK);
-        *moveList++ = make<PROMOTION >(to - D, to, BISHOP);
-        *moveList++ = make<PROMOTION >(to - D, to, KNIGHT);
+        *moveList++ = make<PROMOTION>(to - D, to, ELEPHANT);
+        *moveList++ = make<PROMOTION>(to - D, to, HAWK);
+        *moveList++ = make<PROMOTION>(to - D, to, ROOK);
+        *moveList++ = make<PROMOTION>(to - D, to, BISHOP);
+        *moveList++ = make<PROMOTION>(to - D, to, KNIGHT);
     }
 
     // Elephant/Hawk/Knight promotions are the only promotions that can give a direct check
     // that's not already included in the queen promotion.
     if (Type == QUIET_CHECKS && (PseudoAttacks[KNIGHT][to] & ksq))
     {
-        *moveList++ = make<PROMOTION2>(to - D, to, ELEPHANT);
-        *moveList++ = make<PROMOTION2>(to - D, to, HAWK);
+        *moveList++ = make<PROMOTION>(to - D, to, ELEPHANT);
+        *moveList++ = make<PROMOTION>(to - D, to, HAWK);
     }
     else
         (void)ksq; // Silence a warning under MSVC

@@ -616,7 +616,7 @@ bool Position::pseudo_legal(const Move m) const {
   
   // If the move gates a piece make sure we have that piece in hand
   // and that we are allowed to gate on the from square.
-  if (gating_type(m) != ROOK && !(in_hand(us, gating_type(m)) && (gates(us) & from)))
+  if (gating_type(m) != NO_GATE && !(in_hand(us, gating_type(m)) && (gates(us) & from)))
       return false;
 
   // If the 'from' square is not occupied by a piece belonging to the side to
@@ -693,7 +693,7 @@ bool Position::gives_check(Move m) const {
 
   // Is there a check by gated pieces?
   if (    is_gating(m)
-      && (st->checkSquares[gating_type(m)] & (gating_on_castling_rook(m) ? to_sq(m) : from_sq(m)))
+      && (st->checkSquares[gating_type(m)] & (gating_on_to_sq(m) ? to_sq(m) : from_sq(m)))
       && !aligned(from, to, square<KING>(~sideToMove)))
       return true;
 
@@ -888,18 +888,11 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       st->rule50 = 0;
   }
 
-  // Update incremental scores
-  st->psq += PSQT::psq[pc][to] - PSQT::psq[pc][from];
-
-  // Set capture piece
-  st->capturedPiece = captured;
-
-  // Add gating piece
-  if (is_gating(m))
+  else if (gating_type(m) != NO_GATE) // Safe because m is not a pawn move
   {
       assert(gating_type(m) >= HAWK && gating_type(m) <= ELEPHANT);
 
-      Square gating_square = gating_on_castling_rook(m) ? to_sq(m) : from_sq(m);
+      Square gating_square = gating_on_to_sq(m) ? to_sq(m) : from_sq(m);
       Piece gating_piece = make_piece(sideToMove, gating_type(m));
       put_piece(gating_piece, gating_square);
       remove_from_hand(sideToMove, gating_type(m));
@@ -915,6 +908,12 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       st->gatesBB ^= from;
   if (type_of(m) == CASTLING || (gates(them) & to))
       st->gatesBB ^= to;
+
+  // Update incremental scores
+  st->psq += PSQT::psq[pc][to] - PSQT::psq[pc][from];
+
+  // Set capture piece
+  st->capturedPiece = captured;
 
   // Update the key with the final value
   st->key = k;
@@ -951,7 +950,7 @@ void Position::undo_move(Move m) {
   // Remove gated piece
   if (is_gating(m))
   {
-      Square gating_square = gating_on_castling_rook(m) ? to_sq(m) : from_sq(m);
+      Square gating_square = gating_on_to_sq(m) ? to_sq(m) : from_sq(m);
       Piece gating_piece = make_piece(sideToMove, gating_type(m));
       remove_piece(gating_piece, gating_square);
       add_to_hand(sideToMove, gating_type(m));
