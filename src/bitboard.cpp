@@ -181,7 +181,7 @@ void Bitboards::init() {
               DistanceRingBB[s1][SquareDistance[s1][s2] - 1] |= s2;
           }
 
-  int steps[][5] = { {}, { 7, 9 }, { 6, 10, 15, 17 }, {}, {}, {}, { 1, 7, 8, 9 } };
+  int steps[][5] = { {}, { 7, 9 }, { 6, 10, 15, 17 }, {}, {}, {}, {}, {}, { 1, 7, 8, 9 } };
 
   for (Color c = WHITE; c <= BLACK; ++c)
       for (PieceType pt : { PAWN, KNIGHT, KING })

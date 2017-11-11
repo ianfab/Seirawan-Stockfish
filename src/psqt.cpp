@@ -23,8 +23,8 @@
 #include "types.h"
 
 Value PieceValue[PHASE_NB][PIECE_NB] = {
-  { VALUE_ZERO, PawnValueMg, KnightValueMg, BishopValueMg, RookValueMg, QueenValueMg, VALUE_ZERO, HawkValueMg, ElephantValueMg },
-  { VALUE_ZERO, PawnValueEg, KnightValueEg, BishopValueEg, RookValueEg, QueenValueEg, VALUE_ZERO, HawkValueEg, ElephantValueEg }
+  { VALUE_ZERO, PawnValueMg, KnightValueMg, BishopValueMg, RookValueMg, HawkValueMg, ElephantValueMg, QueenValueMg, VALUE_ZERO },
+  { VALUE_ZERO, PawnValueEg, KnightValueEg, BishopValueEg, RookValueEg, HawkValueEg, ElephantValueEg, QueenValueEg, VALUE_ZERO }
 };
 
 namespace PSQT {
@@ -76,26 +76,6 @@ const Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
    { S(-12, 0), S(  4, 0), S(  8, 0), S(12, 0) },
    { S(-23, 0), S(-15, 0), S(-11, 0), S(-5, 0) }
   },
-  { // Queen
-   { S( 0,-71), S(-4,-56), S(-3,-42), S(-1,-29) },
-   { S(-4,-56), S( 6,-30), S( 9,-21), S( 8, -5) },
-   { S(-2,-39), S( 6,-17), S( 9, -8), S( 9,  5) },
-   { S(-1,-29), S( 8, -5), S(10,  9), S( 7, 19) },
-   { S(-3,-27), S( 9, -5), S( 8, 10), S( 7, 21) },
-   { S(-2,-40), S( 6,-16), S( 8,-10), S(10,  3) },
-   { S(-2,-55), S( 7,-30), S( 7,-21), S( 6, -6) },
-   { S(-1,-74), S(-4,-55), S(-1,-43), S( 0,-30) }
-  },
-  { // King
-   { S(267,  0), S(320, 48), S(270, 75), S(195, 84) },
-   { S(264, 43), S(304, 92), S(238,143), S(180,132) },
-   { S(200, 83), S(245,138), S(176,167), S(110,165) },
-   { S(177,106), S(185,169), S(148,169), S(110,179) },
-   { S(149,108), S(177,163), S(115,200), S( 66,203) },
-   { S(118, 95), S(159,155), S( 84,176), S( 41,174) },
-   { S( 87, 50), S(128, 99), S( 63,122), S( 20,139) },
-   { S( 63,  9), S( 88, 55), S( 47, 80), S(  0, 90) }
-  },
   { // Hawk
    { S(-44,-58), S(-13,-31), S(-25,-37), S(-34,-19) },
    { S(-20,-34), S( 20, -9), S( 12,-14), S(  1,  4) },
@@ -115,6 +95,26 @@ const Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
    { S(-21, 0), S( -7, 0), S(  0, 0), S( 2, 0) },
    { S(-12, 0), S(  4, 0), S(  8, 0), S(12, 0) },
    { S(-23, 0), S(-15, 0), S(-11, 0), S(-5, 0) }
+  },
+  { // Queen
+   { S( 0,-71), S(-4,-56), S(-3,-42), S(-1,-29) },
+   { S(-4,-56), S( 6,-30), S( 9,-21), S( 8, -5) },
+   { S(-2,-39), S( 6,-17), S( 9, -8), S( 9,  5) },
+   { S(-1,-29), S( 8, -5), S(10,  9), S( 7, 19) },
+   { S(-3,-27), S( 9, -5), S( 8, 10), S( 7, 21) },
+   { S(-2,-40), S( 6,-16), S( 8,-10), S(10,  3) },
+   { S(-2,-55), S( 7,-30), S( 7,-21), S( 6, -6) },
+   { S(-1,-74), S(-4,-55), S(-1,-43), S( 0,-30) }
+  },
+  { // King
+   { S(267,  0), S(320, 48), S(270, 75), S(195, 84) },
+   { S(264, 43), S(304, 92), S(238,143), S(180,132) },
+   { S(200, 83), S(245,138), S(176,167), S(110,165) },
+   { S(177,106), S(185,169), S(148,169), S(110,179) },
+   { S(149,108), S(177,163), S(115,200), S( 66,203) },
+   { S(118, 95), S(159,155), S( 84,176), S( 41,174) },
+   { S( 87, 50), S(128, 99), S( 63,122), S( 20,139) },
+   { S( 63,  9), S( 88, 55), S( 47, 80), S(  0, 90) }
   }
 };
 
@@ -128,7 +128,7 @@ Score inhand[PIECE_NB];
 // tables are initialized by flipping and changing the sign of the white scores.
 void init() {
 
-  for (Piece pc = W_PAWN; pc <= W_ELEPHANT; ++pc)
+  for (Piece pc = W_PAWN; pc <= W_KING; ++pc)
   {
       PieceValue[MG][~pc] = PieceValue[MG][pc];
       PieceValue[EG][~pc] = PieceValue[EG][pc];

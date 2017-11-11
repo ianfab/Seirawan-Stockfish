@@ -297,10 +297,10 @@ string UCI::move(Move m, bool chess960) {
   string move = UCI::square(from) + UCI::square(to);
 
   if (type_of(m) == PROMOTION)
-      move += " pnbrqkhe"[promotion_type(m)];
+      move += " pnbrheqk"[promotion_type(m)];
 
   else if (is_gating(m))
-      move += " pnbrqkhe"[gating_type(m)];
+      move += " pnbrheqk"[gating_type(m)];
 
   return move;
 }

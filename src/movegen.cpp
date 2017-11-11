@@ -77,7 +77,7 @@ namespace {
   ExtMove* make_promotions(ExtMove* moveList, Square to, Square ksq) {
 
     if (Type == CAPTURES || Type == EVASIONS || Type == NON_EVASIONS)
-        *moveList++ = make<PROMOTION>(to - D, to, QUEEN);
+        *moveList++ = make<PROMOTION2>(to - D, to, QUEEN);
 
     if (Type == QUIETS || Type == EVASIONS || Type == NON_EVASIONS)
     {
@@ -290,9 +290,9 @@ namespace {
     moveList = generate_moves<  KNIGHT, Checks>(pos, moveList, Us, target);
     moveList = generate_moves<  BISHOP, Checks>(pos, moveList, Us, target);
     moveList = generate_moves<    ROOK, Checks>(pos, moveList, Us, target);
-    moveList = generate_moves<   QUEEN, Checks>(pos, moveList, Us, target);
     moveList = generate_moves<    HAWK, Checks>(pos, moveList, Us, target);
     moveList = generate_moves<ELEPHANT, Checks>(pos, moveList, Us, target);
+    moveList = generate_moves<   QUEEN, Checks>(pos, moveList, Us, target);
 
     if (Type != QUIET_CHECKS && Type != EVASIONS)
     {
