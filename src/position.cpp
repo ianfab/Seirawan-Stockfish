@@ -616,7 +616,7 @@ bool Position::pseudo_legal(const Move m) const {
   
   // If the move gates a piece make sure we have that piece in hand
   // and that we are allowed to gate on the from square.
-  if (gating_type(m) != NO_GATE && !(in_hand(us, gating_type(m)) && (gates(us) & from)))
+  if (gating_type(m) != NO_GATE_TYPE && !(in_hand(us, gating_type(m)) && (gates(us) & from)))
       return false;
 
   // If the 'from' square is not occupied by a piece belonging to the side to
@@ -888,7 +888,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       st->rule50 = 0;
   }
 
-  else if (gating_type(m) != NO_GATE) // Safe because m is not a pawn move
+  else if (gating_type(m) != NO_GATE_TYPE) // Safe because m is not a pawn move
   {
       assert(gating_type(m) >= HAWK && gating_type(m) <= ELEPHANT);
 
