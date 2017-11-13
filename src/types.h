@@ -446,6 +446,8 @@ inline int from_to(Move m) {
 }
 
 inline MoveType type_of(Move m) {
+  // If the conditional is true we return either CASTLING
+  // or PROMOTION, otherwise we return NORMAL or ENPASSANT.
   return MoveType(m & CASTLING ? (m ^ (m >> 6)) & PROMOTION : m & ENPASSANT);
 }
 
