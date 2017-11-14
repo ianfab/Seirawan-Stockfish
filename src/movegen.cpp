@@ -25,6 +25,20 @@
 
 namespace {
 
+  template<MoveType T=NORMAL>
+  ExtMove* generate_gates(const Position& pos, ExtMove* moveList, Color us, Square from, Square to) {
+    
+    if (pos.in_hand(us, HAWK))
+        *moveList++ = make<T>(from, to, HAWK);
+    if (pos.in_hand(us, ELEPHANT))
+        *moveList++ = make<T>(from, to, ELEPHANT);
+    if (pos.in_hand(us, QUEEN))
+        *moveList++ = make<T>(from, to, QUEEN);
+
+    return moveList;
+  }
+
+
   template<CastlingRight Cr, bool Checks, bool Chess960>
   ExtMove* generate_castling(const Position& pos, ExtMove* moveList, Color us) {
 
@@ -64,20 +78,10 @@ namespace {
     *moveList++ = m;
 
     if (!Chess960 || kfrom != kto)
-    {
-        if (pos.in_hand(us, HAWK))
-            *moveList++ = make<CASTLING >(kfrom, rfrom, HAWK);
-        if (pos.in_hand(us, ELEPHANT))
-            *moveList++ = make<CASTLING >(kfrom, rfrom, ELEPHANT);
-    }
+        moveList = generate_gates<CASTLING >(pos, moveList, us, kfrom, rfrom);
 
     if (!Chess960 || rfrom != rto)
-    {
-        if (pos.in_hand(us, HAWK))
-            *moveList++ = make<CASTLING2>(kfrom, rfrom, HAWK);
-        if (pos.in_hand(us, ELEPHANT))
-            *moveList++ = make<CASTLING2>(kfrom, rfrom, ELEPHANT);
-    }
+        moveList = generate_gates<CASTLING2>(pos, moveList, us, kfrom, rfrom);
 
     return moveList;
   }
@@ -278,12 +282,7 @@ namespace {
             Square s = pop_lsb(&b);
             *moveList++ = make_move(from, s);
             if (pos.gates(us) & from)
-            {
-                if (pos.in_hand(us, HAWK))
-                    *moveList++ = make<NORMAL>(from, s, HAWK);
-                if (pos.in_hand(us, ELEPHANT))
-                    *moveList++ = make<NORMAL>(from, s, ELEPHANT);
-            }
+                moveList = generate_gates(pos, moveList, us, from, s);
         }
     }
 
@@ -313,12 +312,7 @@ namespace {
             Square s = pop_lsb(&b);
             *moveList++ = make_move(ksq, s);
             if (pos.gates(Us) & ksq)
-            {
-                if (pos.in_hand(Us, HAWK))
-                    *moveList++ = make<NORMAL>(ksq, s, HAWK);
-                if (pos.in_hand(Us, ELEPHANT))
-                    *moveList++ = make<NORMAL>(ksq, s, ELEPHANT);
-            }
+                moveList = generate_gates(pos, moveList, Us, ksq, s);
         }
     }
 
@@ -433,12 +427,7 @@ ExtMove* generate<EVASIONS>(const Position& pos, ExtMove* moveList) {
       Square s = pop_lsb(&b);
       *moveList++ = make_move(ksq, s);
       if (pos.gates(us) & ksq)
-      {
-          if (pos.in_hand(us, HAWK))
-              *moveList++ = make<NORMAL>(ksq, s, HAWK);
-          if (pos.in_hand(us, ELEPHANT))
-              *moveList++ = make<NORMAL>(ksq, s, ELEPHANT);
-      }
+          moveList = generate_gates(pos, moveList, us, ksq, s);
   }
 
   if (more_than_one(pos.checkers()))

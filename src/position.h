@@ -433,12 +433,12 @@ inline void Position::remove_piece(Piece pc, Square s) {
 }
 
 inline void Position::add_to_hand(Color c, PieceType pt) {
-  assert(pt == HAWK || pt == ELEPHANT);
+  assert(pt >= HAWK && pt <= QUEEN);
   inHand[make_piece(c, pt)] = true;
 }
 
 inline void Position::remove_from_hand(Color c, PieceType pt) {
-  assert(pt == HAWK || pt == ELEPHANT);
+  assert(pt >= HAWK && pt <= QUEEN);
   inHand[make_piece(c, pt)] = false;
 }
 

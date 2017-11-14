@@ -386,7 +386,7 @@ void Position::set_state(StateInfo* si) const {
   }
 
   for (Color c = WHITE; c <= BLACK; ++c)
-      for (PieceType pt : {HAWK, ELEPHANT})
+      for (PieceType pt : {HAWK, ELEPHANT, QUEEN})
           if (in_hand(c, pt))
           {
               si->psq += PSQT::inhand[make_piece(c, pt)];
@@ -467,7 +467,7 @@ const string Position::fen() const {
 
   ss << '[';
   for (Color c = WHITE; c <= BLACK; ++c)
-      for (PieceType pt = HAWK; pt <= ELEPHANT; ++pt)
+      for (PieceType pt = HAWK; pt <= QUEEN; ++pt)
           ss << std::string(in_hand(c, pt), PieceToChar[make_piece(c, pt)]);
   ss << ']';
 
