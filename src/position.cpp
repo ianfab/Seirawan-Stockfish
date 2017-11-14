@@ -770,6 +770,9 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   assert(captured == NO_PIECE || color_of(captured) == (type_of(m) != CASTLING ? them : us));
   assert(type_of(captured) != KING);
 
+  // Remove gates.
+  st->gatesBB &= ~(SquareBB[from] | SquareBB[to]);
+
   if (type_of(m) == CASTLING)
   {
       assert(pc == make_piece(us, KING));
@@ -896,18 +899,11 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       Piece gating_piece = make_piece(sideToMove, gating_type(m));
       put_piece(gating_piece, gating_square);
       remove_from_hand(sideToMove, gating_type(m));
-      st->gatesBB = st->gatesBB & ~SquareBB[gating_square];
       st->psq += PSQT::psq[gating_piece][gating_square] - PSQT::inhand[gating_piece];
       k ^= Zobrist::psq[gating_piece][gating_square] ^ Zobrist::inhand[gating_piece];
       st->materialKey ^= Zobrist::psq[gating_piece][pieceCount[gating_piece]-1];
       st->nonPawnMaterial[us] += PieceValue[MG][gating_piece];
   }
-
-  // Remove gate
-  if (gates(us) & from)
-      st->gatesBB ^= from;
-  if (type_of(m) == CASTLING || (gates(them) & to))
-      st->gatesBB ^= to;
 
   // Update incremental scores
   st->psq += PSQT::psq[pc][to] - PSQT::psq[pc][from];
