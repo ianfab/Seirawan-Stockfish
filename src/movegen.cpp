@@ -38,6 +38,7 @@ namespace {
     Square kfrom = pos.square<KING>(us);
     Square rfrom = pos.castling_rook_square(Cr);
     Square kto = relative_square(us, KingSide ? SQ_G1 : SQ_C1);
+    Square rto = relative_square(us, KingSide ? SQ_F1 : SQ_D1);
     Bitboard enemies = pos.pieces(~us);
 
     assert(!pos.checkers());
@@ -61,14 +62,23 @@ namespace {
         return moveList;
 
     *moveList++ = m;
-    if (pos.in_hand(us, HAWK))
-        *moveList++ = make<CASTLING >(kfrom, rfrom, HAWK);
-    if (pos.in_hand(us, ELEPHANT))
-        *moveList++ = make<CASTLING >(kfrom, rfrom, ELEPHANT);
-    if (pos.in_hand(us, HAWK))
-        *moveList++ = make<CASTLING2>(kfrom, rfrom, HAWK);
-    if (pos.in_hand(us, ELEPHANT))
-        *moveList++ = make<CASTLING2>(kfrom, rfrom, ELEPHANT);
+
+    if (!Chess960 || (kfrom != kto && kfrom != rto))
+    {
+        if (pos.in_hand(us, HAWK))
+            *moveList++ = make<CASTLING >(kfrom, rfrom, HAWK);
+        if (pos.in_hand(us, ELEPHANT))
+            *moveList++ = make<CASTLING >(kfrom, rfrom, ELEPHANT);
+    }
+
+    if (!Chess960 || (rfrom != kto && rfrom != rto))
+    {
+        if (pos.in_hand(us, HAWK))
+            *moveList++ = make<CASTLING2>(kfrom, rfrom, HAWK);
+        if (pos.in_hand(us, ELEPHANT))
+            *moveList++ = make<CASTLING2>(kfrom, rfrom, ELEPHANT);
+    }
+
     return moveList;
   }
 
