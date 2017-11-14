@@ -393,7 +393,7 @@ void Position::set_state(StateInfo* si) const {
       si->key ^= Zobrist::gate[pop_lsb(&b)];
 
   for (Color c = WHITE; c <= BLACK; ++c)
-      for (PieceType pt : {HAWK, ELEPHANT})
+      for (PieceType pt : {HAWK, ELEPHANT, QUEEN})
           if (in_hand(c, pt))
           {
               si->psq += PSQT::inhand[make_piece(c, pt)];
@@ -474,7 +474,7 @@ const string Position::fen() const {
 
   ss << '[';
   for (Color c = WHITE; c <= BLACK; ++c)
-      for (PieceType pt = HAWK; pt <= ELEPHANT; ++pt)
+      for (PieceType pt = HAWK; pt <= QUEEN; ++pt)
           ss << std::string(in_hand(c, pt), PieceToChar[make_piece(c, pt)]);
   ss << ']';
 
@@ -907,7 +907,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
   else if (gating_type(m) != NO_GATE_TYPE) // Safe because m is not a pawn move
   {
-      assert(gating_type(m) >= HAWK && gating_type(m) <= ELEPHANT);
+      assert(gating_type(m) >= HAWK && gating_type(m) <= QUEEN);
 
       Square gating_square = gating_on_to_sq(m) ? to_sq(m) : from_sq(m);
       Piece gating_piece = make_piece(sideToMove, gating_type(m));
