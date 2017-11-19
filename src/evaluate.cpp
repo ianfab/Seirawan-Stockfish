@@ -45,7 +45,7 @@ namespace {
     enum Tracing {NO_TRACE, TRACE};
 
     enum Term { // The first 9 entries are for PieceType
-      MATERIAL = 9, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, TOTAL, TERM_NB
+      MATERIAL = 9, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, INITIATIVE, TOTAL, TERM_NB
     };
 
     double scores[TERM_NB][COLOR_NB][PHASE_NB];
@@ -63,7 +63,7 @@ namespace {
 
     std::ostream& operator<<(std::ostream& os, Term t) {
 
-      if (t == MATERIAL || t == IMBALANCE || t == Term(PAWN) || t == TOTAL)
+      if (t == MATERIAL || t == IMBALANCE || t == Term(PAWN) || t == INITIATIVE || t == TOTAL)
           os << "  ---   --- |   ---   --- | ";
       else
           os << std::setw(5) << scores[t][WHITE][MG] << " "
@@ -429,7 +429,7 @@ namespace {
                                        : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
 
     const Square ksq = pos.square<KING>(Us);
-    Bitboard kingOnlyDefended, undefended, b, b1, b2, safe, other;
+    Bitboard weak, b, b1, b2, safe, other;
     int kingDanger;
 
     // King shelter and enemy pawns storm
@@ -438,16 +438,10 @@ namespace {
     // Main king safety evaluation
     if (kingAttackersCount[Them] > (1 - pos.count<QUEEN>(Them)))
     {
-        // Find the attacked squares which are defended only by our king...
-        kingOnlyDefended =   attackedBy[Them][ALL_PIECES]
-                          &  attackedBy[Us][KING]
-                          & ~attackedBy2[Us];
-
-        // ... and those which are not defended at all in the larger king ring
-        undefended =   attackedBy[Them][ALL_PIECES]
-                    & ~attackedBy[Us][ALL_PIECES]
-                    &  kingRing[Us]
-                    & ~pos.pieces(Them);
+        // Attacked squares defended at most once by our queen or king
+        weak =  attackedBy[Them][ALL_PIECES]
+              & ~attackedBy2[Us]
+              & (attackedBy[Us][KING] | attackedBy[Us][QUEEN] | ~attackedBy[Us][ALL_PIECES]);
 
         // Initialize the 'kingDanger' variable, which will be transformed
         // later into a king danger score. The initial value is based on the
@@ -456,7 +450,7 @@ namespace {
         // the quality of the pawn shelter (current 'score' value).
         kingDanger =        kingAttackersCount[Them] * kingAttackersWeight[Them]
                     + 102 * kingAdjacentZoneAttacksCount[Them]
-                    + 191 * popcount(kingOnlyDefended | undefended)
+                    + 191 * popcount(kingRing[Us] & weak)
                     + 143 * !!pos.pinned_pieces(Us)
                     - 848 * !pos.count<QUEEN>(Them)
                     -   9 * mg_value(score) / 8
@@ -464,20 +458,14 @@ namespace {
 
         // Analyse the safe enemy's checks which are possible on next move
         safe  = ~pos.pieces(Them);
-        safe &= ~attackedBy[Us][ALL_PIECES] | (kingOnlyDefended & attackedBy2[Them]);
+        safe &= ~attackedBy[Us][ALL_PIECES] | (weak & attackedBy2[Them]);
 
         b1 = pos.attacks_from<  ROOK>(ksq);
         b2 = pos.attacks_from<BISHOP>(ksq);
 
         // Enemy queen safe checks
-        if ((b1 | b2) & attackedBy[Them][QUEEN] & safe)
+        if ((b1 | b2) & attackedBy[Them][QUEEN] & safe & ~attackedBy[Us][QUEEN])
             kingDanger += QueenCheck;
-
-        // For minors and rooks, also consider the square safe if attacked twice,
-        // and only defended by our queen.
-        safe |=  attackedBy2[Them]
-               & ~(attackedBy2[Us] | pos.pieces(Them))
-               & attackedBy[Us][QUEEN];
 
         // Some other potential checks are also analysed, even from squares
         // currently occupied by the opponent own pieces, as long as the square
@@ -787,6 +775,9 @@ namespace {
     // that the endgame score will never change sign after the bonus.
     int v = ((eg > 0) - (eg < 0)) * std::max(initiative, -abs(eg));
 
+    if (T)
+        Trace::add(INITIATIVE, make_score(0, v));
+
     return make_score(0, v);
   }
 
@@ -951,6 +942,7 @@ std::string Eval::trace(const Position& pos) {
      << "        Threats | " << Term(THREAT)
      << "   Passed pawns | " << Term(PASSED)
      << "          Space | " << Term(SPACE)
+     << "     Initiative | " << Term(INITIATIVE)
      << "----------------+-------------+-------------+-------------\n"
      << "          Total | " << Term(TOTAL);
 
