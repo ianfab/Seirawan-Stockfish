@@ -46,6 +46,7 @@ namespace Zobrist {
   Key psq[PIECE_NB][SQUARE_NB];
   Key inhand[PIECE_NB];
   Key enpassant[FILE_NB];
+  Key gate[SQUARE_NB];
   Key castling[CASTLING_RIGHT_NB];
   Key side, noPawns;
 }
@@ -143,6 +144,9 @@ void Position::init() {
 
   for (File f = FILE_A; f <= FILE_H; ++f)
       Zobrist::enpassant[f] = rng.rand<Key>();
+
+  for (Square s = SQ_A1; s < SQUARE_NB; ++s)
+      Zobrist::gate[s] = rng.rand<Key>();
 
   for (int cr = NO_CASTLING; cr <= ANY_CASTLING; ++cr)
   {
@@ -384,6 +388,9 @@ void Position::set_state(StateInfo* si) const {
       si->key ^= Zobrist::psq[pc][s];
       si->psq += PSQT::psq[pc][s];
   }
+
+  for (Bitboard b = si->gatesBB; b; )
+      si->key ^= Zobrist::gate[pop_lsb(&b)];
 
   for (Color c = WHITE; c <= BLACK; ++c)
       for (PieceType pt : {HAWK, ELEPHANT})
@@ -771,7 +778,17 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   assert(type_of(captured) != KING);
 
   // Remove gates.
-  st->gatesBB &= ~(SquareBB[from] | SquareBB[to]);
+  if (st->gatesBB & from)
+  {
+      st->gatesBB ^= from;
+      k ^= Zobrist::gate[from];
+  }
+  if (st->gatesBB & to)
+  {
+      st->gatesBB ^= to;
+      k ^= Zobrist::gate[to];
+  }
+  assert(!(st->gatesBB & from) && !(st->gatesBB & to));
 
   if (type_of(m) == CASTLING)
   {
