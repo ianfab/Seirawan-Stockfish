@@ -46,8 +46,8 @@ namespace Zobrist {
   Key psq[PIECE_NB][SQUARE_NB];
   Key inhand[PIECE_NB];
   Key enpassant[FILE_NB];
-  Key gate[SQUARE_NB];
   Key castling[CASTLING_RIGHT_NB];
+  Key gate[SQUARE_NB];
   Key side, noPawns;
 }
 
@@ -127,6 +127,9 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
   return os;
 }
 
+Key gates_key(Bitboard gates) {
+  return Key(gates ^ (gates >> 48) ^ (gates << 48));
+}
 
 /// Position::init() initializes at startup the various arrays used to compute
 /// hash keys.
@@ -137,16 +140,13 @@ void Position::init() {
 
   for (Piece pc : Pieces)
   {
-      for (Square s = SQ_A1; s < SQUARE_NB; ++s)
+      for (Square s = SQ_A1; s <= SQ_H8; ++s)
           Zobrist::psq[pc][s] = rng.rand<Key>();
       Zobrist::inhand[pc] = rng.rand<Key>();
   }
 
   for (File f = FILE_A; f <= FILE_H; ++f)
       Zobrist::enpassant[f] = rng.rand<Key>();
-
-  for (Square s = SQ_A1; s < SQUARE_NB; ++s)
-      Zobrist::gate[s] = rng.rand<Key>();
 
   for (int cr = NO_CASTLING; cr <= ANY_CASTLING; ++cr)
   {
@@ -161,6 +161,9 @@ void Position::init() {
 
   Zobrist::side = rng.rand<Key>();
   Zobrist::noPawns = rng.rand<Key>();
+
+  for (Square s = SQ_A1; s <= SQ_H8; ++s)
+      Zobrist::gate[s] = gates_key(SquareBB[s]);
 }
 
 
@@ -289,6 +292,11 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
       set_castling_right(c, rsq);
   }
 
+  // Remove any possible gating squares if no pieces in hand
+  for (Color c = WHITE; c <= BLACK; ++c)
+      if (!in_hand(c, HAWK) && !in_hand(c, ELEPHANT) && !in_hand(c, QUEEN))
+          st->gatesBB &= ~rank_bb(relative_rank(c, RANK_1));
+
   // 4. En passant square. Ignore if no pawn capture is possible
   if (   ((ss >> col) && (col >= 'a' && col <= 'h'))
       && ((ss >> row) && (row == '3' || row == '6')))
@@ -389,11 +397,8 @@ void Position::set_state(StateInfo* si) const {
       si->psq += PSQT::psq[pc][s];
   }
 
-  for (Bitboard b = si->gatesBB; b; )
-      si->key ^= Zobrist::gate[pop_lsb(&b)];
-
   for (Color c = WHITE; c <= BLACK; ++c)
-      for (PieceType pt : {HAWK, ELEPHANT})
+      for (PieceType pt : {HAWK, ELEPHANT, QUEEN})
           if (in_hand(c, pt))
           {
               si->psq += PSQT::inhand[make_piece(c, pt)];
@@ -407,6 +412,8 @@ void Position::set_state(StateInfo* si) const {
       si->key ^= Zobrist::side;
 
   si->key ^= Zobrist::castling[si->castlingRights];
+
+  si->key ^= gates_key(si->gatesBB);
 
   for (Bitboard b = pieces(PAWN); b; )
   {
@@ -474,7 +481,7 @@ const string Position::fen() const {
 
   ss << '[';
   for (Color c = WHITE; c <= BLACK; ++c)
-      for (PieceType pt = HAWK; pt <= ELEPHANT; ++pt)
+      for (PieceType pt = HAWK; pt <= QUEEN; ++pt)
           ss << std::string(in_hand(c, pt), PieceToChar[make_piece(c, pt)]);
   ss << ']';
 
@@ -777,18 +784,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   assert(captured == NO_PIECE || color_of(captured) == (type_of(m) != CASTLING ? them : us));
   assert(type_of(captured) != KING);
 
-  // Remove gates.
-  if (st->gatesBB & from)
-  {
-      st->gatesBB ^= from;
-      k ^= Zobrist::gate[from];
-  }
-  if (st->gatesBB & to)
-  {
-      st->gatesBB ^= to;
-      k ^= Zobrist::gate[to];
-  }
-  assert(!(st->gatesBB & from) && !(st->gatesBB & to));
+  // Remove gates. This might be too many gates when castling in Chess960!
+  Bitboard lostGates = st->gatesBB & (SquareBB[from] | SquareBB[to]);
 
   if (type_of(m) == CASTLING)
   {
@@ -797,6 +794,13 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
       Square rfrom, rto;
       do_castling<true>(us, from, to, rfrom, rto);
+
+      // Prevent gates being incorrectly removed in obscure Chess960 cases
+      if (is_chess960())
+      {
+          if (from  == to ) lostGates &= ~SquareBB[from ];
+          if (rfrom == rto) lostGates &= ~SquareBB[rfrom];
+      }
 
       st->psq += PSQT::psq[captured][rto] - PSQT::psq[captured][rfrom];
       k ^= Zobrist::psq[captured][rfrom] ^ Zobrist::psq[captured][rto];
@@ -920,6 +924,15 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       k ^= Zobrist::psq[gating_piece][gating_square] ^ Zobrist::inhand[gating_piece];
       st->materialKey ^= Zobrist::psq[gating_piece][pieceCount[gating_piece]-1];
       st->nonPawnMaterial[us] += PieceValue[MG][gating_piece];
+      if (!in_hand(us, HAWK) && !in_hand(us, ELEPHANT) && !in_hand(us, QUEEN))
+          lostGates |= st->gatesBB & rank_bb(relative_rank(us, RANK_1));
+  }
+
+  if (lostGates)
+  {
+      st->gatesBB ^= lostGates;
+      while (lostGates)
+          k ^= Zobrist::gate[pop_lsb(&lostGates)];
   }
 
   // Update incremental scores
