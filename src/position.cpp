@@ -47,6 +47,7 @@ namespace Zobrist {
   Key inhand[PIECE_NB];
   Key enpassant[FILE_NB];
   Key castling[CASTLING_RIGHT_NB];
+  Key gate[SQUARE_NB];
   Key side, noPawns;
 }
 
@@ -126,6 +127,9 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
   return os;
 }
 
+Key gates_key(Bitboard gates) {
+  return Key(gates ^ (gates >> 48) ^ (gates << 48));
+}
 
 /// Position::init() initializes at startup the various arrays used to compute
 /// hash keys.
@@ -136,7 +140,7 @@ void Position::init() {
 
   for (Piece pc : Pieces)
   {
-      for (Square s = SQ_A1; s < SQUARE_NB; ++s)
+      for (Square s = SQ_A1; s <= SQ_H8; ++s)
           Zobrist::psq[pc][s] = rng.rand<Key>();
       Zobrist::inhand[pc] = rng.rand<Key>();
   }
@@ -157,11 +161,11 @@ void Position::init() {
 
   Zobrist::side = rng.rand<Key>();
   Zobrist::noPawns = rng.rand<Key>();
+
+  for (Square s = SQ_A1; s <= SQ_H8; ++s)
+      Zobrist::gate[s] = gates_key(SquareBB[s]);
 }
 
-Key gates_key(Bitboard gates) {
-  return Key(gates ^ (gates >> 48) ^ (gates << 48));
-}
 
 /// Position::set() initializes the position object with the given FEN string.
 /// This function is not very robust - make sure that input FENs are correct,
@@ -927,7 +931,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   if (lostGates)
   {
       st->gatesBB ^= lostGates;
-      k ^= gates_key(lostGates);
+      while (lostGates)
+          k ^= Zobrist::gate[pop_lsb(&lostGates)];
   }
 
   // Update incremental scores
