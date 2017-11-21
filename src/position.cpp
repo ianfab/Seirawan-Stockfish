@@ -289,6 +289,11 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
       set_castling_right(c, rsq);
   }
 
+  // Remove any possible gating squares if no pieces in hand
+  for (Color c = WHITE; c <= BLACK; ++c)
+      if (!in_hand(c, HAWK) && !in_hand(c, ELEPHANT) && !in_hand(c, QUEEN))
+          st->gatesBB ^= gates(c);
+
   // 4. En passant square. Ignore if no pawn capture is possible
   if (   ((ss >> col) && (col >= 'a' && col <= 'h'))
       && ((ss >> row) && (row == '3' || row == '6')))
@@ -917,6 +922,8 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       k ^= Zobrist::psq[gating_piece][gating_square] ^ Zobrist::inhand[gating_piece];
       st->materialKey ^= Zobrist::psq[gating_piece][pieceCount[gating_piece]-1];
       st->nonPawnMaterial[us] += PieceValue[MG][gating_piece];
+      if (!in_hand(us, HAWK) && !in_hand(us, ELEPHANT) && !in_hand(us, QUEEN))
+          lostGates |= gates(us);
   }
 
   // Update gates
