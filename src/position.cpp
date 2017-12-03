@@ -810,7 +810,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   assert(captured == NO_PIECE || color_of(captured) == (type_of(m) != CASTLING ? them : us));
   assert(type_of(captured) != KING);
 
-  // Remove gates. This might be too many gates when castling in Chess960!
+  // Remove gates. When castling 'to' will soon be modified so do this now.
   Bitboard lostGates = st->gatesBB & (SquareBB[from] | SquareBB[to]);
 
   if (type_of(m) == CASTLING)
@@ -820,13 +820,6 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
       Square rfrom, rto;
       do_castling<true>(us, from, to, rfrom, rto);
-
-      // Prevent gates being incorrectly removed in obscure Chess960 cases
-      if (is_chess960())
-      {
-          if (from  == to ) lostGates &= ~SquareBB[from ];
-          if (rfrom == rto) lostGates &= ~SquareBB[rfrom];
-      }
 
       st->psq += PSQT::psq[captured][rto] - PSQT::psq[captured][rfrom];
       k ^= Zobrist::psq[captured][rfrom] ^ Zobrist::psq[captured][rto];
