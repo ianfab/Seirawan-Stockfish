@@ -219,10 +219,10 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   while ((ss >> token) && !isspace(token))
   {
       if (isdigit(token))
-          sq += Square(token - '0'); // Advance the given number of files
+          sq += (token - '0') * EAST; // Advance the given number of files
 
       else if (token == '/')
-          sq -= Square(16);
+          sq += 2 * SOUTH;
 
       else if ((idx = PieceToChar.find(token)) != string::npos)
       {
@@ -892,7 +892,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       if (   (int(to) ^ int(from)) == 16
           && (attacks_from<PAWN>(to - pawn_push(us), us) & pieces(them, PAWN)))
       {
-          st->epSquare = (from + to) / 2;
+          st->epSquare = to - pawn_push(us);
           k ^= Zobrist::enpassant[file_of(st->epSquare)];
       }
 
