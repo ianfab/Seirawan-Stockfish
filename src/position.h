@@ -106,6 +106,7 @@ public:
   bool castling_impeded(CastlingRight cr) const;
   Square castling_rook_square(CastlingRight cr) const;
   bool in_hand(Color c, PieceType pt) const;
+  bool empty_hand(Color c) const;
   Bitboard gates(Color c) const;
 
   // Checking
@@ -273,6 +274,10 @@ inline Square Position::ep_square() const {
 
 inline bool Position::in_hand(Color c, PieceType pt) const {
   return inHand[make_piece(c, pt)];
+}
+
+inline bool Position::empty_hand(Color c) const {
+  return !in_hand(c, HAWK) && !in_hand(c, ELEPHANT) && !in_hand(c, QUEEN);
 }
 
 inline Bitboard Position::gates(Color c) const {

@@ -293,7 +293,7 @@ string UCI::move(Move m, bool chess960) {
       if (gating_on_to_sq(m))
           from = to_sq(m), to = from_sq(m);
 
-      if (!chess960)
+      else if (!chess960)
           to = make_square(to > from ? FILE_G : FILE_C, rank_of(from));
   }
 

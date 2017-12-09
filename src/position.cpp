@@ -267,6 +267,7 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
           for (rsq = relative_square(c, SQ_H1); piece_on(rsq) != rook; --rsq) {}
           st->gatesBB |= rsq;
           st->gatesBB |= square<KING>(c);
+          set_castling_right(c, rsq);
       }
 
       else if (token == 'Q')
@@ -274,24 +275,33 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
           for (rsq = relative_square(c, SQ_A1); piece_on(rsq) != rook; ++rsq) {}
           st->gatesBB |= rsq;
           st->gatesBB |= square<KING>(c);
+          set_castling_right(c, rsq);
       }
 
       else if (token >= 'A' && token <= 'H')
       {
           rsq = make_square(File(token - 'A'), relative_rank(c, RANK_1));
           st->gatesBB |= rsq;
-          continue;
+
+          // Maintain compatibility with Chess960 FENs where an unmoved
+          // king is not mentioned if castling is available.
+          if (empty_hand(c))
+              set_castling_right(c, rsq);
       }
-
-      else
-          continue;
-
-      set_castling_right(c, rsq);
   }
+
+  // In Chess960 give castling rights if king and rook are unmoved
+  for (Color c = WHITE; c <= BLACK; ++c)
+      if (isChess960 && (gates(c) & pieces(KING)))
+      {
+          Bitboard castling_rooks = gates(c) & pieces(ROOK);
+          while (castling_rooks)
+              set_castling_right(c, pop_lsb(&castling_rooks));
+      }
 
   // Remove any possible gating squares if no pieces in hand
   for (Color c = WHITE; c <= BLACK; ++c)
-      if (!in_hand(c, HAWK) && !in_hand(c, ELEPHANT) && !in_hand(c, QUEEN))
+      if (empty_hand(c))
           st->gatesBB ^= gates(c);
 
   // 4. En passant square. Ignore if no pawn capture is possible
@@ -477,39 +487,57 @@ const string Position::fen() const {
           ss << '/';
   }
 
-  ss << '[';
-  for (Color c = WHITE; c <= BLACK; ++c)
-      for (PieceType pt = HAWK; pt <= QUEEN; ++pt)
-          ss << std::string(in_hand(c, pt), PieceToChar[make_piece(c, pt)]);
-  ss << ']';
+  if (!empty_hand(WHITE) || !empty_hand(BLACK))
+  {
+      ss << '[';
+      for (Color c = WHITE; c <= BLACK; ++c)
+          for (PieceType pt = HAWK; pt <= QUEEN; ++pt)
+              ss << std::string(in_hand(c, pt), PieceToChar[make_piece(c, pt)]);
+      ss << ']';
+  }
 
   ss << (sideToMove == WHITE ? " w " : " b ");
 
-  if (can_castle(WHITE_OO))
-      ss << 'K';
+  for (Color c = WHITE; c <= BLACK; ++c)
+  {
+      char A = c == WHITE ? 'A' : 'a';
+      char K = c == WHITE ? 'K' : 'k';
+      char Q = c == WHITE ? 'Q' : 'q';
 
-  if (can_castle(WHITE_OOO))
-      ss << 'Q';
+      if (empty_hand(c))
+      {
+          if (can_castle(c | KING_SIDE))
+              ss << (chess960 ? char(A + file_of(castling_rook_square(c |  KING_SIDE))) : K);
 
-  for (File f = FILE_A; f <= FILE_H; ++f)
-      if (   (gates(WHITE) & make_square(f, RANK_1))
-          && (!can_castle(WHITE_OO)  || f != file_of(castling_rook_square(WHITE_OO)))
-          && (!can_castle(WHITE_OOO) || f != file_of(castling_rook_square(WHITE_OOO)))
-          && (!can_castle(WHITE)     || f != file_of(square<KING>(WHITE))))
-          ss << char('A' + f);
+          if (can_castle(c | QUEEN_SIDE))
+              ss << (chess960 ? char(A + file_of(castling_rook_square(c | QUEEN_SIDE))) : Q);
+      }
+      else
+      {
+          Bitboard castlers = 0;
 
-  if (can_castle(BLACK_OO))
-      ss << 'k';
+          if (!chess960)
+          {
+              if (can_castle(c | KING_SIDE))
+              {
+                  ss << K;
+                  castlers |= square<KING>(c);
+                  castlers |= castling_rook_square(c | KING_SIDE);
+              }
 
-  if (can_castle(BLACK_OOO))
-      ss << 'q';
-
-  for (File f = FILE_A; f <= FILE_H; ++f)
-      if (   (gates(BLACK) & make_square(f, RANK_8))
-          && (!can_castle(BLACK_OO)  || f != file_of(castling_rook_square(BLACK_OO)))
-          && (!can_castle(BLACK_OOO) || f != file_of(castling_rook_square(BLACK_OOO)))
-          && (!can_castle(BLACK)     || f != file_of(square<KING>(BLACK))))
-          ss << char('a' + f);
+              if (can_castle(c | QUEEN_SIDE))
+              {
+                  ss << Q;
+                  castlers |= square<KING>(c);
+                  castlers |= castling_rook_square(c | QUEEN_SIDE);
+              }
+          }
+                  
+          for (File f = FILE_A; f <= FILE_H; ++f)
+              if (gates(c) & ~castlers & file_bb(f))
+                  ss << char(A + f);
+      }
+  }
 
   if (!can_castle(WHITE) && !can_castle(BLACK) && !gates(WHITE) && !gates(BLACK))
       ss << '-';
@@ -782,7 +810,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   assert(captured == NO_PIECE || color_of(captured) == (type_of(m) != CASTLING ? them : us));
   assert(type_of(captured) != KING);
 
-  // Remove gates. This might be too many gates when castling in Chess960!
+  // Remove gates. When castling, 'to' will soon be modified, so do this now.
   Bitboard lostGates = st->gatesBB & (SquareBB[from] | SquareBB[to]);
 
   if (type_of(m) == CASTLING)
@@ -792,13 +820,6 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
 
       Square rfrom, rto;
       do_castling<true>(us, from, to, rfrom, rto);
-
-      // Prevent gates being incorrectly removed in obscure Chess960 cases
-      if (is_chess960())
-      {
-          if (from  == to ) lostGates &= ~SquareBB[from ];
-          if (rfrom == rto) lostGates &= ~SquareBB[rfrom];
-      }
 
       st->psq += PSQT::psq[captured][rto] - PSQT::psq[captured][rfrom];
       k ^= Zobrist::psq[captured][rfrom] ^ Zobrist::psq[captured][rto];
@@ -922,7 +943,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       k ^= Zobrist::psq[gating_piece][gating_square] ^ Zobrist::inhand[gating_piece];
       st->materialKey ^= Zobrist::psq[gating_piece][pieceCount[gating_piece]-1];
       st->nonPawnMaterial[us] += PieceValue[MG][gating_piece];
-      if (!in_hand(us, HAWK) && !in_hand(us, ELEPHANT) && !in_hand(us, QUEEN))
+      if (empty_hand(us))
           lostGates |= gates(us);
   }
 
