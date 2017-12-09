@@ -133,6 +133,8 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
                 + PushClose[distance(winnerKSq, loserKSq)];
 
   if (   pos.count<QUEEN>(strongSide)
+      || pos.count<ELEPHANT>(strongSide)
+      || pos.count<HAWK>(strongSide)
       || pos.count<ROOK>(strongSide)
       ||(pos.count<BISHOP>(strongSide) && pos.count<KNIGHT>(strongSide))
       || (   (pos.pieces(strongSide, BISHOP) & ~DarkSquares)
