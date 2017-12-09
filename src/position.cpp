@@ -810,7 +810,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
   assert(captured == NO_PIECE || color_of(captured) == (type_of(m) != CASTLING ? them : us));
   assert(type_of(captured) != KING);
 
-  // Remove gates. When castling 'to' will soon be modified so do this now.
+  // Remove gates. When castling, 'to' will soon be modified, so do this now.
   Bitboard lostGates = st->gatesBB & (SquareBB[from] | SquareBB[to]);
 
   if (type_of(m) == CASTLING)
