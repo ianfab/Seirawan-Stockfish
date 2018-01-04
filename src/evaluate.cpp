@@ -237,7 +237,6 @@ namespace {
   const Score OtherCheck          = S( 10, 10);
   const Score CloseEnemies        = S(  7,  0);
   const Score PawnlessFlank       = S( 20, 80);
-  const Score ThreatByHangingPawn = S( 71, 61);
   const Score ThreatBySafePawn    = S(192,175);
   const Score ThreatByRank        = S( 16,  3);
   const Score Hanging             = S( 48, 27);
@@ -571,9 +570,6 @@ namespace {
         safeThreats = (shift<Right>(b) | shift<Left>(b)) & weak;
 
         score += ThreatBySafePawn * popcount(safeThreats);
-
-        if (weak ^ safeThreats)
-            score += ThreatByHangingPawn;
     }
 
     // Squares strongly protected by the opponent, either because they attack the
