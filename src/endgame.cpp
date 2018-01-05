@@ -98,6 +98,8 @@ Endgames::Endgames() {
   add<KRKN>("KRKN");
   add<KQKP>("KQKP");
   add<KQKR>("KQKR");
+  add<KEKR>("KEKR");
+  add<KHKR>("KHKR");
 
   add<KNPK>("KNPK");
   add<KNPKB>("KNPKB");
@@ -311,6 +313,42 @@ Value Endgame<KQKR>::operator()(const Position& pos) const {
   Value result =  QueenValueEg
                 - RookValueEg
                 + PushToEdges[loserKSq]
+                + PushClose[distance(winnerKSq, loserKSq)];
+
+  return strongSide == pos.side_to_move() ? result : -result;
+}
+
+
+/// KE vs KR. Drawish, but good winning chances if king and rook are close.
+template<>
+Value Endgame<KEKR>::operator()(const Position& pos) const {
+
+  assert(verify_material(pos, strongSide, ElephantValueMg, 0));
+  assert(verify_material(pos, weakSide, RookValueMg, 0));
+
+  Square winnerKSq = pos.square<KING>(strongSide);
+  Square loserKSq = pos.square<KING>(weakSide);
+  Square loserRSq = pos.square<KING>(weakSide);
+
+  Value result =  Value(PushToEdges[loserKSq])
+                + PushClose[distance(winnerKSq, loserKSq)]
+                + PushClose[distance(loserRSq, loserKSq)];
+
+  return strongSide == pos.side_to_move() ? result : -result;
+}
+
+
+/// KH vs KR.
+template<>
+Value Endgame<KHKR>::operator()(const Position& pos) const {
+
+  assert(verify_material(pos, strongSide, HawkValueMg, 0));
+  assert(verify_material(pos, weakSide, RookValueMg, 0));
+
+  Square winnerKSq = pos.square<KING>(strongSide);
+  Square loserKSq = pos.square<KING>(weakSide);
+
+  Value result =  Value(PushToEdges[loserKSq])
                 + PushClose[distance(winnerKSq, loserKSq)];
 
   return strongSide == pos.side_to_move() ? result : -result;
