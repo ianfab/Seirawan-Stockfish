@@ -191,11 +191,11 @@ namespace {
   // which piece type attacks which one. Attacks on lesser pieces which are
   // pawn-defended are not considered.
   const Score ThreatByMinor[PIECE_TYPE_NB] = {
-    S(0, 0), S(0, 33), S(45, 43), S(46, 47), S(72, 107), S(0, 0), S(0, 0), S(48, 118)
+    S(0, 0), S(0, 33), S(45, 43), S(46, 47), S(72, 107), S(48, 118), S(48, 118), S(48, 118)
   };
 
   const Score ThreatByRook[PIECE_TYPE_NB] = {
-    S(0, 0), S(0, 25), S(40, 62), S(40, 59), S(0, 34), S(0, 0), S(0, 0), S(35, 48)
+    S(0, 0), S(0, 25), S(40, 62), S(40, 59), S(0, 34), S(35, 48), S(35, 48), S(35, 48)
   };
 
   // ThreatByKing[on one/on many] contains bonuses for king attacks on
@@ -224,6 +224,8 @@ namespace {
   const Score LongRangedBishop    = S( 22,  0);
   const Score RookOnPawn          = S(  8, 24);
   const Score TrappedRook         = S( 92,  0);
+  const Score WeakHawk            = S( 30, 10);
+  const Score WeakElephant        = S( 40, 10);
   const Score WeakQueen           = S( 50, 10);
   const Score OtherCheck          = S( 10, 10);
   const Score CloseEnemies        = S(  7,  0);
@@ -244,10 +246,12 @@ namespace {
   const int KingAttackWeights[PIECE_TYPE_NB] = { 0, 0, 78, 56, 45, 10, 10, 11 };
 
   // Penalties for enemy's safe checks
-  const int QueenCheck  = 780;
-  const int RookCheck   = 880;
-  const int BishopCheck = 435;
-  const int KnightCheck = 790;
+  const int QueenCheck    = 780;
+  const int ElephantCheck = 780;
+  const int HawkCheck     = 780;
+  const int RookCheck     = 880;
+  const int BishopCheck   = 435;
+  const int KnightCheck   = 790;
 
   // Threshold for lazy and space evaluation
   const Value LazyThreshold  = Value(1500);
@@ -402,12 +406,14 @@ namespace {
             }
         }
 
-        if (Pt == QUEEN)
+        if (Pt == HAWK || Pt == ELEPHANT || Pt == QUEEN)
         {
             // Penalty if any relative pin or discovered attack against the queen
             Bitboard pinners;
             if (pos.slider_blockers(pos.pieces(Them, ROOK, BISHOP), s, pinners))
-                score -= WeakQueen;
+                score -=  Pt == HAWK     ? WeakHawk
+                        : Pt == ELEPHANT ? WeakElephant
+                                         : WeakQueen;
         }
     }
 
@@ -429,7 +435,7 @@ namespace {
                                        : AllSquares ^ Rank1BB ^ Rank2BB ^ Rank3BB);
 
     const Square ksq = pos.square<KING>(Us);
-    Bitboard weak, b, b1, b2, safe, other;
+    Bitboard weak, b, b1, b2, b3, safe, other;
     int kingDanger;
 
     // King shelter and enemy pawns storm
@@ -462,10 +468,19 @@ namespace {
 
         b1 = pos.attacks_from<  ROOK>(ksq);
         b2 = pos.attacks_from<BISHOP>(ksq);
+        b3 = pos.attacks_from<KNIGHT>(ksq);
 
         // Enemy queen safe checks
         if ((b1 | b2) & attackedBy[Them][QUEEN] & safe & ~attackedBy[Us][QUEEN])
             kingDanger += QueenCheck;
+
+        // Enemy elephant safe checks
+        if ((b1 | b3) & attackedBy[Them][ELEPHANT] & safe)
+            kingDanger += ElephantCheck;
+
+        // Enemy hawk safe checks
+        if ((b2 | b3) & attackedBy[Them][HAWK] & safe)
+            kingDanger += HawkCheck;
 
         // Some other potential checks are also analysed, even from squares
         // currently occupied by the opponent own pieces, as long as the square
@@ -488,11 +503,10 @@ namespace {
             score -= OtherCheck;
 
         // Enemy knights safe and other checks
-        b = pos.attacks_from<KNIGHT>(ksq) & attackedBy[Them][KNIGHT];
-        if (b & safe)
+        if (b3 & attackedBy[Them][KNIGHT] & safe)
             kingDanger += KnightCheck;
 
-        else if (b & other)
+        else if (b3 & attackedBy[Them][KNIGHT] & other)
             score -= OtherCheck;
 
         // Transform the kingDanger units into a Score, and substract it from the evaluation
@@ -544,7 +558,7 @@ namespace {
     Value v = (      HawkValueMg * pos.in_hand(Us, HAWK)
                + ElephantValueMg * pos.in_hand(Us, ELEPHANT)
                +    QueenValueMg * pos.in_hand(Us, QUEEN))
-            
+
                      /  (1 + popcount(pos.gates(Us)));
 
     score -= make_score(v, v);
@@ -591,7 +605,7 @@ namespace {
                 score += ThreatByRank * (int)relative_rank(Them, s);
         }
 
-        b = (pos.pieces(Them, QUEEN) | weak) & attackedBy[Us][ROOK];
+        b = (pos.pieces(Them, HAWK, ELEPHANT, QUEEN) | weak) & attackedBy[Us][ROOK];
         while (b)
         {
             Square s = pop_lsb(&b);
@@ -608,7 +622,7 @@ namespace {
     }
 
     // Bonus for opponent unopposed weak pawns
-    if (pos.pieces(Us, ROOK, QUEEN))
+    if (pos.pieces(Us, ROOK, ELEPHANT, QUEEN))
         score += WeakUnopposedPawn * pe->weak_unopposed(Them);
 
     // Find squares where our pawns can push on the next move
@@ -681,7 +695,7 @@ namespace {
                 // in the pawn's path attacked or occupied by the enemy.
                 defendedSquares = unsafeSquares = squaresToQueen = forward_file_bb(Us, s);
 
-                bb = forward_file_bb(Them, s) & pos.pieces(ROOK, QUEEN) & pos.attacks_from<ROOK>(s);
+                bb = forward_file_bb(Them, s) & pos.pieces(ROOK, ELEPHANT, QUEEN) & pos.attacks_from<ROOK>(s);
 
                 if (!(pos.pieces(Us) & bb))
                     defendedSquares &= attackedBy[Us][ALL_PIECES];
