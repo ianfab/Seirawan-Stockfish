@@ -514,7 +514,7 @@ namespace {
         else if (b3 & attackedBy[Them][KNIGHT] & other)
             score -= OtherCheck;
 
-        // Transform the kingDanger units into a Score, and substract it from the evaluation.
+        // Transform the kingDanger units into a Score, and substract it from the evaluation
         if (kingDanger > 0)
         {
             int mobilityDanger = mg_value(mobility[Them] - mobility[Us]);
