@@ -514,9 +514,13 @@ namespace {
         else if (b3 & attackedBy[Them][KNIGHT] & other)
             score -= OtherCheck;
 
-        // Transform the kingDanger units into a Score, and substract it from the evaluation
+        // Transform the kingDanger units into a Score, and substract it from the evaluation.
         if (kingDanger > 0)
+        {
+            int mobilityDanger = mg_value(mobility[Them] - mobility[Us]);
+            kingDanger = std::max(0, kingDanger + mobilityDanger);
             score -= make_score(kingDanger * kingDanger / 4096, kingDanger / 16);
+        }
     }
 
     // King tropism: firstly, find squares that opponent attacks in our king flank
