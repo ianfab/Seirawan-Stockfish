@@ -56,7 +56,7 @@ namespace {
   };
 
   // Tables used to drive a piece towards or away from another piece
-  const int PushClose[8] = { 0, 0, 100, 80, 60, 40, 20, 10 };
+  const int PushClose[8] = { 0, 120, 100, 80, 60, 40, 20, 10 };
   const int PushAway [8] = { 0, 5, 20, 40, 60, 80, 90, 100 };
 
   // Pawn Rank based scaling factors used in KRPPKRP endgame
@@ -328,7 +328,7 @@ Value Endgame<KEKR>::operator()(const Position& pos) const {
 
   Square winnerKSq = pos.square<KING>(strongSide);
   Square loserKSq = pos.square<KING>(weakSide);
-  Square loserRSq = pos.square<KING>(weakSide);
+  Square loserRSq = pos.square<ROOK>(weakSide);
 
   Value result =  Value(PushToEdges[loserKSq])
                 + PushClose[distance(winnerKSq, loserKSq)]
