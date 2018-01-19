@@ -442,12 +442,12 @@ namespace {
     Score score = pe->king_safety<Us>(pos, ksq);
 
     // Main king safety evaluation
-    if (kingAttackersCount[Them] > (1 - pos.count<QUEEN>(Them)))
+    if (kingAttackersCount[Them] > 0)
     {
         // Attacked squares defended at most once by our queen or king
         weak =  attackedBy[Them][ALL_PIECES]
               & ~attackedBy2[Us]
-              & (attackedBy[Us][KING] | attackedBy[Us][QUEEN] | ~attackedBy[Us][ALL_PIECES]);
+              & (attackedBy[Us][KING] | ~attackedBy[Us][ALL_PIECES]);
 
         // Initialize the 'kingDanger' variable, which will be transformed
         // later into a king danger score. The initial value is based on the
@@ -471,7 +471,7 @@ namespace {
         b3 = pos.attacks_from<KNIGHT>(ksq);
 
         // Enemy queen safe checks
-        if ((b1 | b2) & attackedBy[Them][QUEEN] & safe & ~attackedBy[Us][QUEEN])
+        if ((b1 | b2) & attackedBy[Them][QUEEN] & safe)
             kingDanger += QueenCheck;
 
         // Enemy elephant safe checks
