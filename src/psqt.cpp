@@ -141,8 +141,8 @@ void init() {
           psq[ pc][ s] = v + Bonus[pc][rank_of(s)][f];
           psq[~pc][~s] = -psq[pc][s];
       }
-      inhand[ pc] = v;
-      inhand[~pc] = -v;
+      inhand[ pc] = v + make_score(50, 50);
+      inhand[~pc] = -inhand[pc];
   }
 }
 
