@@ -254,7 +254,6 @@ namespace {
   const int KnightCheck   = 790;
 
   // Threshold for lazy and space evaluation
-  const Value LazyThreshold  = Value(1500);
   const Value SpaceThreshold = Value(12222);
 
 
@@ -863,11 +862,6 @@ namespace {
     pe = Pawns::probe(pos);
     score += pe->pawns_score();
 
-    // Early exit if score is high
-    Value v = (mg_value(score) + eg_value(score)) / 2;
-    if (abs(v) > LazyThreshold)
-       return pos.side_to_move() == WHITE ? v : -v;
-
     // Main evaluation begins here
 
     initialize<WHITE>();
@@ -899,8 +893,8 @@ namespace {
 
     // Interpolate between a middlegame and a (scaled by 'sf') endgame score
     ScaleFactor sf = evaluate_scale_factor(eg_value(score));
-    v =  mg_value(score) * int(me->game_phase())
-       + eg_value(score) * int(PHASE_MIDGAME - me->game_phase()) * sf / SCALE_FACTOR_NORMAL;
+    Value v =  mg_value(score) * int(me->game_phase())
+             + eg_value(score) * int(PHASE_MIDGAME - me->game_phase()) * sf / SCALE_FACTOR_NORMAL;
 
     v /= int(PHASE_MIDGAME);
 
