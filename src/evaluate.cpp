@@ -100,6 +100,7 @@ namespace {
     template<Color Us> Score evaluate_passed_pawns();
     template<Color Us> Score evaluate_space();
     template<Color Us, PieceType Pt> Score evaluate_pieces();
+    template<Color Us> Score evaluate_hand();
     ScaleFactor evaluate_scale_factor(Value eg);
     Score evaluate_initiative(Value eg);
 
@@ -217,6 +218,12 @@ namespace {
 
   // KingProtector[PieceType-2] contains a bonus according to distance from king
   const Score KingProtector[] = { S(-3, -5), S(-4, -3), S(-3, 0), S(0, 0), S(0, 0), S(-1, 1) };
+
+  // GateScore[gates][two_in_hand] contains a bonus for the number of remaining
+  // gate squares depending on whether we have 1 or 2 pieces left in hand.
+  const Score GateScore[9][2] = {{S( 0,  0), S( 0,  0)}, {S(13, 13), S(-3, -3)}, {S(30, 30), S( 4,  4)},
+                                 {S(45, 45), S(10, 10)}, {S(58, 58), S(16, 16)}, {S(68, 68), S(21, 21)},
+                                 {S(76, 76), S(25, 25)}, {S(82, 82), S(29, 29)}, {S(85, 85), S(32, 32)}};
 
   // Assorted bonuses and penalties used by evaluation
   const Score MinorBehindPawn     = S( 16,  0);
@@ -553,15 +560,6 @@ namespace {
     Bitboard b, weak, defended, stronglyProtected, safeThreats;
     Score score = SCORE_ZERO;
 
-    // Penalty for running out of gates
-    Value v = (      HawkValueMg * pos.in_hand(Us, HAWK)
-               + ElephantValueMg * pos.in_hand(Us, ELEPHANT)
-               +    QueenValueMg * pos.in_hand(Us, QUEEN))
-
-                     /  (1 + popcount(pos.gates(Us)));
-
-    score -= make_score(v, v);
-
     // Non-pawn enemies attacked by a pawn
     weak = (pos.pieces(Them) ^ pos.pieces(Them, PAWN)) & attackedBy[Us][PAWN];
 
@@ -835,6 +833,23 @@ namespace {
     return sf;
   }
 
+  template<Tracing T>  template<Color Us>
+  Score Evaluation<T>::evaluate_hand() {
+
+    Score score = pos.hand_score(Us);
+    Bitboard gatesBB = pos.gates(Us);
+    
+    if (!score || !gatesBB)
+	return SCORE_ZERO;
+    
+    bool two_in_hand = (score > make_score(QueenValueMg, QueenValueEg));
+    
+    if (two_in_hand && !more_than_one(gatesBB))
+        score = score / 2;
+    
+    return score + GateScore[popcount(gatesBB)][two_in_hand];
+  }
+
 
   // value() is the main function of the class. It computes the various parts of
   // the evaluation and returns the value of the position from the point of view
@@ -885,6 +900,9 @@ namespace {
     score +=  evaluate_passed_pawns<WHITE>()
             - evaluate_passed_pawns<BLACK>();
 
+    score +=  evaluate_hand<WHITE>()
+            - evaluate_hand<BLACK>();
+    
     if (pos.non_pawn_material() >= SpaceThreshold)
         score +=  evaluate_space<WHITE>()
                 - evaluate_space<BLACK>();

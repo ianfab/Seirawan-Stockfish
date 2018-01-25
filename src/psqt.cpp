@@ -121,7 +121,7 @@ const Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
 #undef S
 
 Score psq[PIECE_NB][SQUARE_NB];
-Score inhand[PIECE_NB];
+Score inhand[PIECE_TYPE_NB];
 
 // init() initializes piece-square tables: the white halves of the tables are
 // copied from Bonus[] adding the piece value, then the black halves of the
@@ -141,8 +141,8 @@ void init() {
           psq[ pc][ s] = v + Bonus[pc][rank_of(s)][f];
           psq[~pc][~s] = -psq[pc][s];
       }
-      inhand[ pc] = v + make_score(50, 50);
-      inhand[~pc] = -inhand[pc];
+
+      inhand[pc] = v;
   }
 }
 
