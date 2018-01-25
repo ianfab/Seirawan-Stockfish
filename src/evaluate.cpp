@@ -45,7 +45,7 @@ namespace {
     enum Tracing {NO_TRACE, TRACE};
 
     enum Term { // The first 9 entries are for PieceType
-      MATERIAL = 9, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, INITIATIVE, TOTAL, TERM_NB
+      MATERIAL = 9, HAND, IMBALANCE, MOBILITY, THREAT, PASSED, SPACE, INITIATIVE, TOTAL, TERM_NB
     };
 
     double scores[TERM_NB][COLOR_NB][PHASE_NB];
@@ -847,7 +847,12 @@ namespace {
     if (two_in_hand && !more_than_one(gatesBB))
         score = score / 2;
     
-    return score + GateScore[popcount(gatesBB)][two_in_hand];
+    score += GateScore[popcount(gatesBB)][two_in_hand];
+    
+    if (T)
+        Trace::add(HAND, Us, score);
+
+    return score;
   }
 
 
@@ -960,6 +965,7 @@ std::string Eval::trace(const Position& pos) {
      << "                |   MG    EG  |   MG    EG  |   MG    EG  \n"
      << "----------------+-------------+-------------+-------------\n"
      << "       Material | " << Term(MATERIAL)
+     << "           Hand | " << Term(HAND)
      << "      Imbalance | " << Term(IMBALANCE)
      << "          Pawns | " << Term(PAWN)
      << "        Knights | " << Term(KNIGHT)
