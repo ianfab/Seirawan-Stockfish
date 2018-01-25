@@ -27,6 +27,8 @@ Value PieceValue[PHASE_NB][PIECE_NB] = {
   { VALUE_ZERO, PawnValueEg, KnightValueEg, BishopValueEg, RookValueEg, HawkValueEg, ElephantValueEg, QueenValueEg }
 };
 
+Score PieceScore[PIECE_TYPE_NB];
+
 namespace PSQT {
 
 #define S(mg, eg) make_score(mg, eg)
@@ -121,7 +123,6 @@ const Score Bonus[][RANK_NB][int(FILE_NB) / 2] = {
 #undef S
 
 Score psq[PIECE_NB][SQUARE_NB];
-Score inhand[PIECE_TYPE_NB];
 
 // init() initializes piece-square tables: the white halves of the tables are
 // copied from Bonus[] adding the piece value, then the black halves of the
@@ -135,14 +136,14 @@ void init() {
 
       Score v = make_score(PieceValue[MG][pc], PieceValue[EG][pc]);
 
+      PieceScore[type_of(pc)] = v;
+
       for (Square s = SQ_A1; s <= SQ_H8; ++s)
       {
           File f = std::min(file_of(s), FILE_H - file_of(s));
           psq[ pc][ s] = v + Bonus[pc][rank_of(s)][f];
           psq[~pc][~s] = -psq[pc][s];
       }
-
-      inhand[pc] = v;
   }
 }
 

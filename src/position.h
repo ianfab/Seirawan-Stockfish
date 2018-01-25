@@ -29,9 +29,6 @@
 #include "bitboard.h"
 #include "types.h"
 
-namespace PSQT {
-  extern Score inhand[PIECE_TYPE_NB];
-}
 
 /// StateInfo struct stores information needed to restore a Position object to
 /// its previous state when we retract a move. Whenever a move is made on the
@@ -449,13 +446,13 @@ inline void Position::remove_piece(Piece pc, Square s) {
 inline void Position::add_to_hand(Color c, PieceType pt) {
   assert(pt >= HAWK && pt <= QUEEN);
   inHand[make_piece(c, pt)] = true;
-  handScore[c] += PSQT::inhand[pt];
+  handScore[c] += PieceScore[pt];
 }
 
 inline void Position::remove_from_hand(Color c, PieceType pt) {
   assert(pt >= HAWK && pt <= QUEEN);
   inHand[make_piece(c, pt)] = false;
-  handScore[c] -= PSQT::inhand[pt];
+  handScore[c] -= PieceScore[pt];
 }
 
 inline void Position::move_piece(Piece pc, Square from, Square to) {
