@@ -161,6 +161,7 @@ public:
   bool is_draw(int ply) const;
   int rule50_count() const;
   Score psq_score() const;
+  Score hand_score(Color c) const;
   Value non_pawn_material(Color c) const;
   Value non_pawn_material() const;
 
@@ -188,6 +189,7 @@ private:
   Bitboard byTypeBB[PIECE_TYPE_NB];
   Bitboard byColorBB[COLOR_NB];
   bool inHand[PIECE_NB];
+  Score handScore[COLOR_NB];
   int pieceCount[PIECE_NB];
   Square pieceList[PIECE_NB][16];
   int index[SQUARE_NB];
@@ -364,6 +366,10 @@ inline Score Position::psq_score() const {
   return st->psq;
 }
 
+inline Score Position::hand_score(Color c) const {
+  return handScore[c];
+}
+
 inline Value Position::non_pawn_material(Color c) const {
   return st->nonPawnMaterial[c];
 }
@@ -440,11 +446,13 @@ inline void Position::remove_piece(Piece pc, Square s) {
 inline void Position::add_to_hand(Color c, PieceType pt) {
   assert(pt >= HAWK && pt <= QUEEN);
   inHand[make_piece(c, pt)] = true;
+  handScore[c] += PieceScore[pt];
 }
 
 inline void Position::remove_from_hand(Color c, PieceType pt) {
   assert(pt >= HAWK && pt <= QUEEN);
   inHand[make_piece(c, pt)] = false;
+  handScore[c] -= PieceScore[pt];
 }
 
 inline void Position::move_piece(Piece pc, Square from, Square to) {

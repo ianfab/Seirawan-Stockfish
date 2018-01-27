@@ -38,7 +38,6 @@ using std::string;
 
 namespace PSQT {
   extern Score psq[PIECE_NB][SQUARE_NB];
-  extern Score inhand[PIECE_NB];
 }
 
 namespace Zobrist {
@@ -410,10 +409,7 @@ void Position::set_state(StateInfo* si) const {
   for (Color c = WHITE; c <= BLACK; ++c)
       for (PieceType pt : {HAWK, ELEPHANT, QUEEN})
           if (in_hand(c, pt))
-          {
-              si->psq += PSQT::inhand[make_piece(c, pt)];
               si->key ^= Zobrist::inhand[make_piece(c, pt)];
-          }
 
   if (si->epSquare != SQ_NONE)
       si->key ^= Zobrist::enpassant[file_of(si->epSquare)];
@@ -939,7 +935,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       Piece gating_piece = make_piece(sideToMove, gating_type(m));
       put_piece(gating_piece, gating_square);
       remove_from_hand(sideToMove, gating_type(m));
-      st->psq += PSQT::psq[gating_piece][gating_square] - PSQT::inhand[gating_piece];
+      st->psq += PSQT::psq[gating_piece][gating_square];
       k ^= Zobrist::psq[gating_piece][gating_square] ^ Zobrist::inhand[gating_piece];
       st->materialKey ^= Zobrist::psq[gating_piece][pieceCount[gating_piece]-1];
       st->nonPawnMaterial[us] += PieceValue[MG][gating_piece];
