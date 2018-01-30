@@ -132,7 +132,7 @@ std::ostream& operator<<(std::ostream& os, const Position& pos) {
 
 void Position::init() {
 
-  PRNG rng(1070372);
+  PRNG rng(1070373);
 
   for (Piece pc : Pieces)
   {
@@ -1180,10 +1180,6 @@ bool Position::see_ge(Move m, Value threshold) const {
       // Copy the piece bitboards array and put the gated piece in
       // place of the original.
       std::memcpy(tmpPiecesBB, byTypeBB, sizeof(byTypeBB));
-
-      assert(PAWN <= gating_type(m) && gating_type(m) <= KING);
-      assert(PAWN <= nextVictim && nextVictim <= KING);
-
       tmpPiecesBB[gating_type(m)] ^= from;
       tmpPiecesBB[nextVictim] ^= from;
       piecesBB = tmpPiecesBB;
