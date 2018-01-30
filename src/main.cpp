@@ -53,6 +53,7 @@ void handler(int sig) {
 int main(int argc, char* argv[]) {
 
   signal(SIGBUS, handler);
+  signal(SIGILL, handler);
 
   std::cout << engine_info() << std::endl;
 
