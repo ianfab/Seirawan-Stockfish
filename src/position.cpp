@@ -1140,7 +1140,7 @@ bool Position::see_ge(Move m, Value threshold) const {
   Color stm = ~color_of(piece_on(from)); // First consider opponent's move
   Value balance; // Values of the pieces taken by us minus opponent's ones
   Bitboard occupied, stmAttackers, tmpPiecesBB[PIECE_TYPE_NB];
-  //  const Bitboard *piecesBB = byTypeBB;
+  const Bitboard *piecesBB = byTypeBB;
 
   // The opponent may be able to recapture so this is the best result
   // we can hope for.
@@ -1180,9 +1180,9 @@ bool Position::see_ge(Move m, Value threshold) const {
       // Copy the piece bitboards array and put the gated piece in
       // place of the original.
       std::memcpy(tmpPiecesBB, byTypeBB, sizeof(byTypeBB));
-      tmpPiecesBB[gating_type(m)] ^= from;
-      tmpPiecesBB[nextVictim] ^= from;
-      //      piecesBB = tmpPiecesBB;
+      //      tmpPiecesBB[gating_type(m)] ^= from;
+      //      tmpPiecesBB[nextVictim] ^= from;
+      piecesBB = tmpPiecesBB;
   }
 
   while (true)
@@ -1205,7 +1205,7 @@ bool Position::see_ge(Move m, Value threshold) const {
           break;
 
       // Locate and remove the next least valuable attacker
-      nextVictim = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
+      nextVictim = min_attacker<PAWN>(piecesBB, to, stmAttackers, occupied, attackers);
 
       if (nextVictim == KING)
       {
