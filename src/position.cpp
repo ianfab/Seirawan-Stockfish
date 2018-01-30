@@ -1139,7 +1139,7 @@ bool Position::see_ge(Move m, Value threshold) const {
   PieceType nextVictim = type_of(piece_on(from));
   Color stm = ~color_of(piece_on(from)); // First consider opponent's move
   Value balance; // Values of the pieces taken by us minus opponent's ones
-  Bitboard occupied, stmAttackers, tmpPiecesBB[PIECE_TYPE_NB];
+  Bitboard occupied, stmAttackers, tmpPiecesBB[PIECE_TYPE_NB] = { 0 };
 
   // The opponent may be able to recapture so this is the best result
   // we can hope for.
