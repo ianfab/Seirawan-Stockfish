@@ -1179,7 +1179,9 @@ bool Position::see_ge(Move m, Value threshold) const {
 
       // Copy the piece bitboards array and put the gated piece in
       // place of the original.
-      std::copy(byTypeBB, byTypeBB + PIECE_TYPE_NB, tmpPiecesBB);
+      for (PieceType pt = PAWN; pt <= KING; ++pt)
+          tmpPiecesBB[pt] = byTypeBB[pt];
+
       tmpPiecesBB[gating_type(m)] ^= from;
       tmpPiecesBB[nextVictim] ^= from;
       piecesBB = tmpPiecesBB;
