@@ -1182,6 +1182,9 @@ bool Position::see_ge(Move m, Value threshold) const {
       for (PieceType pt = PAWN; pt <= KING; ++pt)
           tmpPiecesBB[pt] = byTypeBB[pt];
 
+      assert(PAWN <= gating_type(m) && gating_type(m) <= KING);
+      assert(PAWN <= nextVictim && nextVictim <= KING);
+
       tmpPiecesBB[gating_type(m)] ^= from;
       tmpPiecesBB[nextVictim] ^= from;
       piecesBB = tmpPiecesBB;
