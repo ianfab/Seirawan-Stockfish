@@ -1127,7 +1127,7 @@ Key Position::key_after(Move m) const {
 /// SEE value of move is greater or equal to the given threshold. We'll use an
 /// algorithm similar to alpha-beta pruning with a null window.
 
-bool Position::see_ge(Move m, Value threshold) const {
+bool Position::see_ge(Move m, Value threshold) {
 
   assert(is_ok(m));
 
@@ -1136,7 +1136,7 @@ bool Position::see_ge(Move m, Value threshold) const {
       return VALUE_ZERO >= threshold;
 
   Square from = from_sq(m), to = to_sq(m);
-  PieceType nextVictim = type_of(piece_on(from));
+  PieceType nextVictim, movedPiece = type_of(piece_on(from));
   Color stm = ~color_of(piece_on(from)); // First consider opponent's move
   Value balance; // Values of the pieces taken by us minus opponent's ones
   Bitboard occupied, stmAttackers;
@@ -1150,16 +1150,24 @@ bool Position::see_ge(Move m, Value threshold) const {
 
   // Now assume the worst possible result: that the opponent can
   // capture our piece for free.
-  balance -= PieceValue[MG][nextVictim];
+  balance -= PieceValue[MG][movedPiece];
 
-  if (balance >= VALUE_ZERO) // Always true if nextVictim == KING
+  if (balance >= VALUE_ZERO) // Always true if movedPiece == KING
       return true;
 
   bool opponentToMove = true;
-  occupied = pieces() ^ from ^ to;
+  occupied = pieces() ^ to;
 
-  // Find all attackers to the destination square, with the moving piece removed,
-  // but possibly an X-ray attacker added behind it.
+  if (gating_type(m) == NO_GATE_TYPE)
+      occupied ^= from;
+  else
+  {
+      byTypeBB[gating_type(m)] ^= from;
+      byTypeBB[movedPiece] ^= from;
+  }
+
+  // Find all attackers to the destination square including X-ray attacks
+  // if the move was not a gating move.
   Bitboard attackers = attackers_to(to, occupied) & occupied;
 
   while (true)
@@ -1207,6 +1215,12 @@ bool Position::see_ge(Move m, Value threshold) const {
       // probably knows that it is just the bitwise negation ~balance.
       balance = -balance-1;
       stm = ~stm;
+  }
+
+  if (gating_type(m) != NO_GATE_TYPE)
+  {
+      byTypeBB[gating_type(m)] ^= from;
+      byTypeBB[movedPiece] ^= from;
   }
 
   // If the opponent gave up we win, otherwise we lose.
