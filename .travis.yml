@@ -40,9 +40,6 @@ branches:
   only:
    - master
 
-before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install gdb; fi
-
 before_script:
   - cd src
   - ulimit -c unlimited -S
@@ -82,4 +79,4 @@ after_failure:
   - ls -la
   - COREFILE=$(find . -maxdepth 1 -name "core*" | head -n 1) # find core file
   - echo "$COREFILE"
-  - if [[ -f "$COREFILE" ]]; then gdb -c "$COREFILE" stockfish -ex "thread apply all bt" -ex "set pagination 0" -batch; fi
+  - if [[ -f "$COREFILE" ]]; then lldb -c "$COREFILE" --batch -o 'thread backtrace all' -o 'quit'; fi

@@ -5,7 +5,7 @@
 error()
 {
   echo "running bench for signature failed on line $1"
-  cat bench.txt
+  tail bench.txt
   exit 1
 }
 trap 'error ${LINENO}' ERR
