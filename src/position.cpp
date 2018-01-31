@@ -24,6 +24,7 @@
 #include <cstring> // For std::memset, std::memcmp
 #include <iomanip>
 #include <sstream>
+#include <iostream>
 
 #include "bitboard.h"
 #include "misc.h"
@@ -1320,7 +1321,15 @@ bool Position::pos_is_ok() const {
       || piece_on(square<KING>(BLACK)) != B_KING
       || (   ep_square() != SQ_NONE
           && relative_rank(sideToMove, ep_square()) != RANK_6))
-      assert(0 && "pos_is_ok: Default");
+
+      {
+          std::cout << sideToMove << std::endl;
+          std::cout << square<KING>(WHITE) << std::endl;
+          std::cout << square<KING>(WHITE) << std::endl;
+          std::cout << piece_on(square<KING>(WHITE)) << std::endl;
+          std::cout << piece_on(square<KING>(BLACK)) << std::endl;
+          assert(0 && "pos_is_ok: Default");
+      }
 
   if (Fast)
       return true;
