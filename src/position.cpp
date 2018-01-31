@@ -1325,10 +1325,10 @@ bool Position::pos_is_ok() const {
       {
           std::cout << sideToMove << std::endl;
           std::cout << square<KING>(WHITE) << std::endl;
-          std::cout << square<KING>(WHITE) << std::endl;
+          std::cout << square<KING>(BLACK) << std::endl;
           std::cout << piece_on(square<KING>(WHITE)) << std::endl;
           std::cout << piece_on(square<KING>(BLACK)) << std::endl;
-          assert(0 && "pos_is_ok: Default");
+          //          assert(0 && "pos_is_ok: Default");
       }
 
   if (Fast)

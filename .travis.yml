@@ -60,4 +60,4 @@ after_failure:
   - ls -la
   - COREFILE=$(find . -maxdepth 1 -name "core*" | head -n 1) # find core file
   - echo "$COREFILE"
-  - if [[ -f "$COREFILE" ]]; then lldb -c "$COREFILE" --batch -o 'thread backtrace all' -o 'thread select 2' -o 'frame variable' -o 'quit'; fi
+  - if [[ -f "$COREFILE" ]]; then lldb -c "$COREFILE" --batch -o 'thread backtrace all' -o 'quit'; fi
