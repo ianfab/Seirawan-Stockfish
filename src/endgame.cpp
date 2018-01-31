@@ -122,6 +122,7 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
 
   assert(pos.pos_is_ok());
   assert(weakSide == WHITE || weakSide == BLACK);
+  assert(strongSide == WHITE || strongSide == BLACK);
 
 #ifndef NDEBUG
   if (!verify_material(pos, weakSide, VALUE_ZERO, 0))
@@ -136,10 +137,14 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
 
   // Stalemate detection with lone king
   if (pos.side_to_move() == weakSide && !MoveList<LEGAL>(pos).size())
+      {
+          std::cout << pos.fen() << std::endl;
       return VALUE_DRAW;
-
+      }
   Square winnerKSq = pos.square<KING>(strongSide);
   Square loserKSq = pos.square<KING>(weakSide);
+
+  assert(is_ok(winnerKSq) && is_ok(loserKSq));
 
   Value result =  pos.non_pawn_material(strongSide)
                 + pos.count<PAWN>(strongSide) * PawnValueEg
