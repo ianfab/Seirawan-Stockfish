@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <iostream>
 
 #include "bitboard.h"
 #include "endgame.h"
@@ -118,6 +119,14 @@ Endgames::Endgames() {
 /// of the board, and for keeping the distance between the two kings small.
 template<>
 Value Endgame<KXK>::operator()(const Position& pos) const {
+
+#ifndef NDEBUG
+  if (!verify_material(pos, weakSide, VALUE_ZERO, 0))
+  {
+      std::cout << "FEN: " << pos.fen() << std::endl;
+      assert(pos.pos_is_ok());
+  }
+#endif
 
   assert(verify_material(pos, weakSide, VALUE_ZERO, 0));
   assert(!pos.checkers()); // Eval is never called when in check
