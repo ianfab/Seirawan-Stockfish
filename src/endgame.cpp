@@ -112,6 +112,7 @@ Endgames::Endgames() {
   add<KRPPKRP>("KRPPKRP");
 }
 
+int kxk_evals = 0;
 
 /// Mate with KX vs K. This function is used to evaluate positions with
 /// king and plenty of material vs a lone king. It simply gives the
@@ -120,17 +121,8 @@ Endgames::Endgames() {
 template<>
 Value Endgame<KXK>::operator()(const Position& pos) const {
 
-  assert(pos.pos_is_ok());
-  assert(weakSide == WHITE || weakSide == BLACK);
-  assert(strongSide == WHITE || strongSide == BLACK);
-
-#ifndef NDEBUG
-  if (!verify_material(pos, weakSide, VALUE_ZERO, 0))
-  {
-      std::cout << "FEN: " << pos.fen() << std::endl;
-      assert(pos.pos_is_ok());
-  }
-#endif
+  if (kxk_evals++ > 10990)
+      std::cout << kxk_evals << " " << pos.fen() << std::endl;
 
   assert(verify_material(pos, weakSide, VALUE_ZERO, 0));
   assert(!pos.checkers()); // Eval is never called when in check
@@ -141,8 +133,6 @@ Value Endgame<KXK>::operator()(const Position& pos) const {
 
   Square winnerKSq = pos.square<KING>(strongSide);
   Square loserKSq = pos.square<KING>(weakSide);
-
-  assert(is_ok(winnerKSq) && is_ok(loserKSq));
 
   Value result =  pos.non_pawn_material(strongSide)
                 + pos.count<PAWN>(strongSide) * PawnValueEg
