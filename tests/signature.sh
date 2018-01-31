@@ -5,13 +5,16 @@
 error()
 {
   echo "running bench for signature failed on line $1"
+  cat bench.txt
   exit 1
 }
 trap 'error ${LINENO}' ERR
 
 # obtain
 
-signature=`./stockfish bench 2>&1 | grep "Nodes searched  : " | awk '{print $4}'`
+./stockfish bench &> bench.txt
+
+signature=`grep "Nodes searched  : " bench.txt | awk '{print $4}'`
 
 if [ $# -gt 0 ]; then
    # compare to given reference
