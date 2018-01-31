@@ -120,6 +120,9 @@ Endgames::Endgames() {
 template<>
 Value Endgame<KXK>::operator()(const Position& pos) const {
 
+  assert(pos.pos_is_ok());
+  assert(weakSide == WHITE || weakSide == BLACK);
+
 #ifndef NDEBUG
   if (!verify_material(pos, weakSide, VALUE_ZERO, 0))
   {
