@@ -20,7 +20,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <iostream>
 
 #include "bitboard.h"
 #include "endgame.h"
@@ -112,7 +111,6 @@ Endgames::Endgames() {
   add<KRPPKRP>("KRPPKRP");
 }
 
-int kxk_evals = 0;
 
 /// Mate with KX vs K. This function is used to evaluate positions with
 /// king and plenty of material vs a lone king. It simply gives the
@@ -120,9 +118,6 @@ int kxk_evals = 0;
 /// of the board, and for keeping the distance between the two kings small.
 template<>
 Value Endgame<KXK>::operator()(const Position& pos) const {
-
-  if (kxk_evals++ > 10990)
-      std::cout << kxk_evals << " " << pos.fen() << std::endl;
 
   assert(verify_material(pos, weakSide, VALUE_ZERO, 0));
   assert(!pos.checkers()); // Eval is never called when in check
