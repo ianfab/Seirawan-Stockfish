@@ -78,6 +78,7 @@ script:
   - if [[ "$COMPILER" == "g++-6" ]]; then make clean && make -j2 ARCH=x86-64 sanitize=thread    optimize=no debug=yes build > /dev/null && ../tests/instrumented.sh --sanitizer-thread; fi
 
 after_failure:
+  - ls -la /cores
   - COREFILE=$(find /cores -maxdepth 1 -name "core*" | head -n 1) # find core file
   - echo "$COREFILE"
   - if [[ -f "$COREFILE" ]]; then gdb -c "$COREFILE" stockfish -ex "thread apply all bt" -ex "set pagination 0" -batch; fi
