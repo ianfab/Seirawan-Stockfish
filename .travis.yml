@@ -46,6 +46,7 @@ before_install:
 before_script:
   - cd src
   - ulimit -c unlimited -S
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ls -la /cores; fi
 
 script:
   # Obtain bench reference from git log
@@ -78,4 +79,5 @@ script:
 
 after_failure:
   - COREFILE=$(find /cores -maxdepth 1 -name "core*" | head -n 1) # find core file
+  - echo "$COREFILE"
   - if [[ -f "$COREFILE" ]]; then gdb -c "$COREFILE" stockfish -ex "thread apply all bt" -ex "set pagination 0" -batch; fi
