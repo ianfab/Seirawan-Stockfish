@@ -1139,7 +1139,8 @@ bool Position::see_ge(Move m, Value threshold) const {
   PieceType nextVictim = type_of(piece_on(from));
   Color stm = ~color_of(piece_on(from)); // First consider opponent's move
   Value balance; // Values of the pieces taken by us minus opponent's ones
-  Bitboard occupied, stmAttackers;
+  Bitboard occupied, stmAttackers, tmpPiecesBB[PIECE_TYPE_NB];
+  const Bitboard *piecesBB = byTypeBB;
 
   // The opponent may be able to recapture so this is the best result
   // we can hope for.
@@ -1158,9 +1159,31 @@ bool Position::see_ge(Move m, Value threshold) const {
   bool opponentToMove = true;
   occupied = pieces() ^ from ^ to;
 
-  // Find all attackers to the destination square, with the moving piece removed,
-  // but possibly an X-ray attacker added behind it.
+  // Re-occpuy the from square if we are gating a piece
+  if (gating_type(m) != NO_GATE_TYPE)
+      occupied ^= from;
+
+  // Find all attackers to the destination square including X-ray attacks
+  // if the move was not a gating move.
   Bitboard attackers = attackers_to(to, occupied) & occupied;
+
+  if (gating_type(m) != NO_GATE_TYPE)
+  {
+      // At this point 'attackers' always contains the 'from' square
+      // because the 'from' square is set in 'occupied' and the call
+      // to attackers_to believed the moving piece was still present.
+      // If the gated piece does not attack the 'to' square then make
+      // a correction.
+      if (!(PseudoAttacks[gating_type(m)][from] & to))
+          attackers ^= from;
+
+      // Copy the piece bitboards array and put the gated piece in
+      // place of the original.
+      std::memcpy(tmpPiecesBB, byTypeBB, sizeof(byTypeBB));
+      tmpPiecesBB[gating_type(m)] ^= from;
+      tmpPiecesBB[nextVictim] ^= from;
+      piecesBB = tmpPiecesBB;
+  }
 
   while (true)
   {
@@ -1182,7 +1205,7 @@ bool Position::see_ge(Move m, Value threshold) const {
           break;
 
       // Locate and remove the next least valuable attacker
-      nextVictim = min_attacker<PAWN>(byTypeBB, to, stmAttackers, occupied, attackers);
+      nextVictim = min_attacker<PAWN>(piecesBB, to, stmAttackers, occupied, attackers);
 
       if (nextVictim == KING)
       {
