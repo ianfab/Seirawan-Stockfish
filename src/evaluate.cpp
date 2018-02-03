@@ -121,6 +121,10 @@ namespace {
     // pawn or squares attacked by 2 pawns are not explicitly added.
     Bitboard attackedBy2[COLOR_NB];
 
+    // bishop/rookAttacksToQEH[color] are the squares where a bishop
+    // or rook would attack one of our super-pieces.
+    Bitboard bishopAttacksToQEH[COLOR_NB], rookAttacksToQEH[COLOR_NB];
+
     // kingRing[color] is the zone around the king which is considered
     // by the king safety evaluation. This consists of the squares directly
     // adjacent to the king, and (only for a king on its first rank) the
@@ -230,23 +234,24 @@ namespace {
                                  {S(76, 76), S(25, 25)}, {S(82, 82), S(29, 29)}, {S(85, 85), S(32, 32)}};
 
   // Assorted bonuses and penalties used by evaluation
-  const Score MinorBehindPawn     = S( 16,  0);
-  const Score BishopPawns         = S(  8, 12);
-  const Score LongRangedBishop    = S( 22,  0);
-  const Score RookOnPawn          = S(  8, 24);
-  const Score TrappedRook         = S( 92,  0);
-  const Score WeakHawk            = S( 30, 10);
-  const Score WeakElephant        = S( 40, 10);
-  const Score WeakQueen           = S( 50, 10);
-  const Score CloseEnemies        = S(  7,  0);
-  const Score PawnlessFlank       = S( 20, 80);
-  const Score ThreatBySafePawn    = S(192,175);
-  const Score ThreatByRank        = S( 16,  3);
-  const Score Hanging             = S( 48, 27);
-  const Score WeakUnopposedPawn   = S(  5, 25);
-  const Score ThreatByPawnPush    = S( 38, 22);
-  const Score HinderPassedPawn    = S(  7,  0);
-  const Score TrappedBishopA1H1   = S( 50, 50);
+  const Score MinorBehindPawn       = S( 16,  0);
+  const Score BishopPawns           = S(  8, 12);
+  const Score LongRangedBishop      = S( 22,  0);
+  const Score RookOnPawn            = S(  8, 24);
+  const Score TrappedRook           = S( 92,  0);
+  const Score WeakHawk              = S( 30, 10);
+  const Score WeakElephant          = S( 40, 10);
+  const Score WeakQueen             = S( 50, 10);
+  const Score CloseEnemies          = S(  7,  0);
+  const Score PawnlessFlank         = S( 20, 80);
+  const Score ThreatBySafePawn      = S(192,175);
+  const Score ThreatByRank          = S( 16,  3);
+  const Score Hanging               = S( 48, 27);
+  const Score WeakUnopposedPawn     = S(  5, 25);
+  const Score ThreatByPawnPush      = S( 38, 22);
+  const Score ThreatByAttackOnQEH   = S( 38, 22);
+  const Score HinderPassedPawn      = S(  7,  0);
+  const Score TrappedBishopA1H1     = S( 50, 50);
 
   #undef S
   #undef V
@@ -290,6 +295,8 @@ namespace {
 
     attackedBy2[Us]            = b & attackedBy[Us][PAWN];
     attackedBy[Us][ALL_PIECES] = b | attackedBy[Us][PAWN];
+
+    rookAttacksToQEH[Us] = bishopAttacksToQEH[Us] = 0;
 
     // Init our king safety tables only if we are going to use them
     if (pos.non_pawn_material(Them) >= RookValueMg + KnightValueMg)
@@ -335,6 +342,22 @@ namespace {
 
         attackedBy2[Us] |= attackedBy[Us][ALL_PIECES] & b;
         attackedBy[Us][ALL_PIECES] |= attackedBy[Us][Pt] |= b;
+
+        if (Pt == QUEEN)
+        {
+            bishopAttacksToQEH[Us] |= b & PseudoAttacks[BISHOP][s];
+            rookAttacksToQEH[Us]   |= b & PseudoAttacks[ROOK][s];
+        }
+        else if (Pt == ELEPHANT)
+        {
+            bishopAttacksToQEH[Us] |= pos.attacks_from<BISHOP>(s);
+            rookAttacksToQEH[Us]   |= b & PseudoAttacks[ROOK][s];
+        }
+        else if (Pt == HAWK)
+        {
+            bishopAttacksToQEH[Us] |= b & PseudoAttacks[BISHOP][s];
+            rookAttacksToQEH[Us]   |= pos.attacks_from<ROOK>(s);
+        }
 
         if (b & kingRing[Them])
         {
@@ -633,6 +656,13 @@ namespace {
        & ~attackedBy[Us][PAWN];
 
     score += ThreatByPawnPush * popcount(b);
+
+    // Add a bonus for safe slider attack threats on opponent super pieces
+    safeThreats = ~pos.pieces(Us) & ~attackedBy2[Them] & attackedBy2[Us];
+    b =  (attackedBy[Us][BISHOP] & bishopAttacksToQEH[Them])
+       | (attackedBy[Us][ROOK  ] & rookAttacksToQEH[Them]);
+
+    score += ThreatByAttackOnQEH * popcount(b & safeThreats);
 
     if (T)
         Trace::add(THREAT, Us, score);
