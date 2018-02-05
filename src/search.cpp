@@ -604,7 +604,8 @@ namespace {
         if (    piecesCount <= TB::Cardinality
             && (piecesCount <  TB::Cardinality || depth >= TB::ProbeDepth)
             &&  pos.rule50_count() == 0
-            && !pos.can_castle(ANY_CASTLING))
+            && !pos.can_castle(ANY_CASTLING)
+            && !pos.gates(WHITE) && !pos.gates(BLACK))
         {
             TB::ProbeState err;
             TB::WDLScore v = Tablebases::probe_wdl(pos, &err);
@@ -1605,6 +1606,9 @@ void Tablebases::filter_root_moves(Position& pos, Search::RootMoves& rootMoves) 
     }
 
     if (Cardinality < popcount(pos.pieces()) || pos.can_castle(ANY_CASTLING))
+        return;
+
+    if (pos.gates(WHITE) || pos.gates(BLACK))
         return;
 
     // Don't filter any moves if the user requested analysis on multiple

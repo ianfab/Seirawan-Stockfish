@@ -216,7 +216,7 @@ const Value WDL_to_value[] = {
     VALUE_MATE - MAX_PLY - 1
 };
 
-const std::string PieceToChar = " PNBRQK  pnbrqk";
+const std::string PieceToChar = " PNBRHEQK pnbrheqk";
 
 int Binomial[6][SQUARE_NB];    // [k][n] k elements from a set of n elements
 int LeadPawnIdx[5][SQUARE_NB]; // [leadPawnsCnt][SQUARE_NB]
