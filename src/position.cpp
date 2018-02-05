@@ -2,7 +2,7 @@
   Stockfish, a UCI chess playing engine derived from Glaurung 2.1
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
-  Copyright (C) 2015-2017 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
+  Copyright (C) 2015-2018 Marco Costalba, Joona Kiiski, Gary Linscott, Tord Romstad
 
   Stockfish is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -219,10 +219,10 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
   while ((ss >> token) && !isspace(token))
   {
       if (isdigit(token))
-          sq += Square(token - '0'); // Advance the given number of files
+          sq += (token - '0') * EAST; // Advance the given number of files
 
       else if (token == '/')
-          sq -= Square(16);
+          sq += 2 * SOUTH;
 
       else if ((idx = PieceToChar.find(token)) != string::npos)
       {
@@ -892,7 +892,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) {
       if (   (int(to) ^ int(from)) == 16
           && (attacks_from<PAWN>(to - pawn_push(us), us) & pieces(them, PAWN)))
       {
-          st->epSquare = (from + to) / 2;
+          st->epSquare = to - pawn_push(us);
           k ^= Zobrist::enpassant[file_of(st->epSquare)];
       }
 
