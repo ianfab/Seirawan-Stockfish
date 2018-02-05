@@ -229,9 +229,9 @@ namespace {
 
   // GateScore[gates][two_in_hand] contains a bonus for the number of remaining
   // gate squares depending on whether we have 1 or 2 pieces left in hand.
-  const Score GateScore[9][2] = {{S( 0,  0), S( 0,  0)}, {S(13, 13), S(-3, -3)}, {S(30, 30), S( 4,  4)},
-                                 {S(45, 45), S(10, 10)}, {S(58, 58), S(16, 16)}, {S(68, 68), S(21, 21)},
-                                 {S(76, 76), S(25, 25)}, {S(82, 82), S(29, 29)}, {S(85, 85), S(32, 32)}};
+  const Score GateScore[9][2] = { { S( 0,  0), S( 0,  0) }, { S(13, 13), S(-3, -3) }, { S(30, 30), S( 4,  4) },
+                                  { S(45, 45), S(10, 10) }, { S(58, 58), S(16, 16) }, { S(68, 68), S(21, 21) },
+                                  { S(76, 76), S(25, 25) }, { S(82, 82), S(29, 29) }, { S(85, 85), S(32, 32) } };
 
   // Assorted bonuses and penalties used by evaluation
   const Score MinorBehindPawn       = S( 16,  0);
@@ -869,17 +869,17 @@ namespace {
 
     Score score = pos.hand_score(Us);
     Bitboard gatesBB = pos.gates(Us);
-    
+
     if (!score || !gatesBB)
-	return SCORE_ZERO;
-    
+        return SCORE_ZERO;
+
     bool two_in_hand = (score > make_score(QueenValueMg, QueenValueEg));
-    
+
     if (two_in_hand && !more_than_one(gatesBB))
         score = score / 2;
-    
+
     score += GateScore[popcount(gatesBB)][two_in_hand];
-    
+
     if (T)
         Trace::add(HAND, Us, score);
 
@@ -938,7 +938,7 @@ namespace {
 
     score +=  evaluate_hand<WHITE>()
             - evaluate_hand<BLACK>();
-    
+
     if (pos.non_pawn_material() >= SpaceThreshold)
         score +=  evaluate_space<WHITE>()
                 - evaluate_space<BLACK>();
