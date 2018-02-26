@@ -298,6 +298,9 @@ Position& Position::set(const string& fenStr, bool isChess960, StateInfo* si, Th
               set_castling_right(c, pop_lsb(&castling_rooks));
       }
 
+  // Remove bogus gate squares. Should only happen with incorrect FENs.
+  st->gatesBB &= pieces() & (Rank1BB | Rank8BB);
+
   // Remove any possible gating squares if no pieces in hand
   for (Color c = WHITE; c <= BLACK; ++c)
       if (empty_hand(c))
